@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,35 +7,59 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Search, Plus, X, ShoppingCart, Package } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useProducts } from "@/hooks/useProducts";
+import { useInventory } from "@/hooks/useInventory";
+import { supabase } from "@/integrations/supabase/client";
+
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  category?: string;
+  stock?: number;
+}
 
 const POSInterface = () => {
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const categories = ["Semua", "Minuman", "Makanan", "Snack", "Dessert"];
   const [selectedCategory, setSelectedCategory] = useState("Semua");
 
-  const products = [
-    { id: 1, name: "Caramel Milkshake", price: 26000, category: "Minuman", stock: 50, image: "/api/placeholder/150/150" },
-    { id: 2, name: "Caramel Mochiato", price: 30000, category: "Minuman", stock: 30, image: "/api/placeholder/150/150" },
-    { id: 3, name: "Cha Tea Latte", price: 29000, category: "Minuman", stock: 25, image: "/api/placeholder/150/150" },
-    { id: 4, name: "Chicken Popcorn", price: 23000, category: "Makanan", stock: 40, image: "/api/placeholder/150/150" },
-    { id: 5, name: "Chicken Stick", price: 20000, category: "Makanan", stock: 35, image: "/api/placeholder/150/150" },
-    { id: 6, name: "Chicken Wings", price: 32000, category: "Makanan", stock: 20, image: "/api/placeholder/150/150" },
-    { id: 7, name: "Chocolate Frapucino", price: 39000, category: "Minuman", stock: 15, image: "/api/placeholder/150/150" },
-    { id: 8, name: "Coffee Latte", price: 30000, category: "Minuman", stock: 45, image: "/api/placeholder/150/150" },
-    { id: 9, name: "Custom Cake", price: 45000, category: "Dessert", stock: 10, image: "/api/placeholder/150/150" },
-    { id: 10, name: "Dino Nugget", price: 12000, category: "Snack", stock: 60, image: "/api/placeholder/150/150" }
-  ];
+  const { products, loading: productsLoading } = useProducts();
+  const { inventory, loading: inventoryLoading } = useInventory();
 
-  const filteredProducts = selectedCategory === "Semua" 
-    ? products 
-    : products.filter(product => product.category === selectedCategory);
+  // Combine products with inventory data
+  const productsWithStock = products.map(product => {
+    const inventoryItem = inventory.find(inv => inv.product_id === product.id);
+    return {
+      ...product,
+      stock: inventoryItem?.current_stock || 0
+    };
+  });
 
-  const addToCart = (product) => {
+  const filteredProducts = productsWithStock.filter(product => {
+    const matchesCategory = selectedCategory === "Semua" || product.category?.name === selectedCategory;
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesCategory && matchesSearch && product.stock > 0;
+  });
+
+  const addToCart = (product: any) => {
     const existingItem = cart.find(item => item.id === product.id);
     
     if (existingItem) {
+      if (existingItem.quantity >= product.stock) {
+        toast({
+          title: "Stok tidak mencukupi",
+          description: `Stok tersedia: ${product.stock}`,
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const updatedCart = cart.map(item =>
         item.id === product.id 
           ? { ...item, quantity: item.quantity + 1 }
@@ -43,7 +67,14 @@ const POSInterface = () => {
       );
       setCart(updatedCart);
     } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
+      setCart([...cart, { 
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        quantity: 1,
+        category: product.category?.name,
+        stock: product.stock
+      }]);
     }
     
     calculateTotal();
@@ -53,15 +84,25 @@ const POSInterface = () => {
     });
   };
 
-  const removeFromCart = (productId) => {
+  const removeFromCart = (productId: string) => {
     const updatedCart = cart.filter(item => item.id !== productId);
     setCart(updatedCart);
     calculateTotal();
   };
 
-  const updateQuantity = (productId, newQuantity) => {
+  const updateQuantity = (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       removeFromCart(productId);
+      return;
+    }
+    
+    const product = productsWithStock.find(p => p.id === productId);
+    if (product && newQuantity > product.stock) {
+      toast({
+        title: "Stok tidak mencukupi",
+        description: `Stok tersedia: ${product.stock}`,
+        variant: "destructive"
+      });
       return;
     }
     
@@ -79,7 +120,12 @@ const POSInterface = () => {
     setTotal(newTotal);
   };
 
-  const processPayment = () => {
+  const generateTransactionNumber = () => {
+    const timestamp = Date.now().toString().slice(-6);
+    return `TRX${timestamp}`;
+  };
+
+  const processPayment = async () => {
     if (cart.length === 0) {
       toast({
         title: "Keranjang kosong",
@@ -89,14 +135,95 @@ const POSInterface = () => {
       return;
     }
 
-    toast({
-      title: "Transaksi berhasil!",
-      description: `Total: Rp ${total.toLocaleString('id-ID')}`,
-    });
-    
-    setCart([]);
-    setTotal(0);
+    setIsProcessing(true);
+
+    try {
+      const subtotal = total;
+      const taxAmount = Math.round(total * 0.1);
+      const totalAmount = subtotal + taxAmount;
+      const transactionNumber = generateTransactionNumber();
+      
+      // Insert transaction
+      const { data: transaction, error: transactionError } = await supabase
+        .from('transactions')
+        .insert([{
+          transaction_number: transactionNumber,
+          subtotal: subtotal,
+          tax_amount: taxAmount,
+          total_amount: totalAmount,
+          payment_method: 'Cash', // Default to cash, can be made dynamic later
+          cashier_name: 'Admin' // Default cashier, can be made dynamic later
+        }])
+        .select()
+        .single();
+
+      if (transactionError) throw transactionError;
+
+      // Insert transaction items
+      const transactionItems = cart.map(item => ({
+        transaction_id: transaction.id,
+        product_id: item.id,
+        product_name: item.name,
+        quantity: item.quantity,
+        unit_price: item.price,
+        total_price: item.price * item.quantity
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('transaction_items')
+        .insert(transactionItems);
+
+      if (itemsError) throw itemsError;
+
+      // Update inventory (reduce stock)
+      for (const item of cart) {
+        const inventoryItem = inventory.find(inv => inv.product_id === item.id);
+        if (inventoryItem) {
+          const newStock = inventoryItem.current_stock - item.quantity;
+          const { error: updateError } = await supabase
+            .from('inventory')
+            .update({ current_stock: Math.max(0, newStock) })
+            .eq('id', inventoryItem.id);
+
+          if (updateError) {
+            console.error('Error updating inventory:', updateError);
+          }
+        }
+      }
+
+      toast({
+        title: "Transaksi berhasil!",
+        description: `Nomor transaksi: ${transactionNumber}`,
+      });
+      
+      setCart([]);
+      setTotal(0);
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memproses transaksi",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
+
+  useEffect(() => {
+    calculateTotal();
+  }, [cart]);
+
+  if (productsLoading || inventoryLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Memuat data produk...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -109,7 +236,12 @@ const POSInterface = () => {
               <CardTitle>Pilih Produk</CardTitle>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input placeholder="Cari produk..." className="pl-10 w-64" />
+                <Input 
+                  placeholder="Cari produk..." 
+                  className="pl-10 w-64"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
             </div>
           </CardHeader>
@@ -153,6 +285,13 @@ const POSInterface = () => {
             </Card>
           ))}
         </div>
+
+        {filteredProducts.length === 0 && (
+          <div className="text-center py-8">
+            <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">Tidak ada produk yang tersedia</p>
+          </div>
+        )}
       </div>
 
       {/* Cart and Checkout */}
@@ -237,10 +376,11 @@ const POSInterface = () => {
                 
                 <Button 
                   onClick={processPayment}
+                  disabled={isProcessing}
                   className="w-full bg-green-600 hover:bg-green-700 text-white"
                   size="lg"
                 >
-                  Bayar Sekarang
+                  {isProcessing ? "Memproses..." : "Bayar Sekarang"}
                 </Button>
               </>
             )}
