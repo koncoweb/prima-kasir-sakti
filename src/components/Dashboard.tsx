@@ -1,13 +1,139 @@
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, ShoppingCart, Package, Users, DollarSign } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+
+interface DashboardStats {
+  todaySales: number;
+  totalTransactions: number;
+  productsSold: number;
+  averageTransaction: number;
+}
+
+interface TopProduct {
+  name: string;
+  sold: number;
+  revenue: number;
+}
+
+interface Activity {
+  time: string;
+  action: string;
+  status: 'success' | 'warning' | 'info';
+}
 
 const Dashboard = () => {
-  const stats = [
+  const [stats, setStats] = useState<DashboardStats>({
+    todaySales: 0,
+    totalTransactions: 0,
+    productsSold: 0,
+    averageTransaction: 0
+  });
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // Get today's date
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Fetch today's transactions
+      const { data: todayTransactions, error: transactionsError } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          transaction_items (
+            quantity,
+            total_price,
+            product_name
+          )
+        `)
+        .eq('transaction_date', today);
+
+      if (transactionsError) throw transactionsError;
+
+      // Calculate stats
+      const todaySales = todayTransactions?.reduce((sum, t) => sum + t.total_amount, 0) || 0;
+      const totalTransactions = todayTransactions?.length || 0;
+      const productsSold = todayTransactions?.reduce((sum, t) => 
+        sum + (t.transaction_items?.reduce((itemSum: number, item: any) => itemSum + item.quantity, 0) || 0), 0
+      ) || 0;
+      const averageTransaction = totalTransactions > 0 ? todaySales / totalTransactions : 0;
+
+      setStats({
+        todaySales,
+        totalTransactions,
+        productsSold,
+        averageTransaction
+      });
+
+      // Calculate top products
+      const productSales: { [key: string]: { sold: number; revenue: number } } = {};
+      
+      todayTransactions?.forEach(transaction => {
+        transaction.transaction_items?.forEach((item: any) => {
+          if (!productSales[item.product_name]) {
+            productSales[item.product_name] = { sold: 0, revenue: 0 };
+          }
+          productSales[item.product_name].sold += item.quantity;
+          productSales[item.product_name].revenue += item.total_price;
+        });
+      });
+
+      const topProductsList = Object.entries(productSales)
+        .map(([name, data]) => ({ name, ...data }))
+        .sort((a, b) => b.sold - a.sold)
+        .slice(0, 5);
+
+      setTopProducts(topProductsList);
+
+      // Generate recent activities from transactions
+      const recentActivities: Activity[] = todayTransactions
+        ?.slice(0, 5)
+        .map(transaction => ({
+          time: transaction.transaction_time.substring(0, 5),
+          action: `Transaksi ${transaction.transaction_number} - Rp ${transaction.total_amount.toLocaleString('id-ID')}`,
+          status: 'success' as const
+        })) || [];
+
+      setActivities(recentActivities);
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast({
+        title: "Error",
+        description: "Gagal mengambil data dashboard",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <p>Memuat data dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const statsData = [
     {
       title: "Penjualan Hari Ini",
-      value: "Rp 2,450,000",
+      value: `Rp ${stats.todaySales.toLocaleString('id-ID')}`,
       change: "+12.5%",
       trend: "up",
       icon: DollarSign,
@@ -15,7 +141,7 @@ const Dashboard = () => {
     },
     {
       title: "Total Transaksi",
-      value: "147",
+      value: stats.totalTransactions.toString(),
       change: "+8.2%",
       trend: "up",
       icon: ShoppingCart,
@@ -23,7 +149,7 @@ const Dashboard = () => {
     },
     {
       title: "Produk Terjual",
-      value: "324",
+      value: stats.productsSold.toString(),
       change: "+15.3%",
       trend: "up",
       icon: Package,
@@ -31,7 +157,7 @@ const Dashboard = () => {
     },
     {
       title: "Rata-rata Transaksi",
-      value: "Rp 16,667",
+      value: `Rp ${Math.round(stats.averageTransaction).toLocaleString('id-ID')}`,
       change: "-2.1%",
       trend: "down",
       icon: Users,
@@ -39,19 +165,11 @@ const Dashboard = () => {
     }
   ];
 
-  const topProducts = [
-    { name: "Chicken Wings", sold: 45, revenue: "Rp 1,440,000" },
-    { name: "Caramel Milkshake", sold: 38, revenue: "Rp 988,000" },
-    { name: "Chocolate Frapucino", sold: 32, revenue: "Rp 1,248,000" },
-    { name: "Coffee Latte", sold: 28, revenue: "Rp 840,000" },
-    { name: "Chicken Popcorn", sold: 25, revenue: "Rp 575,000" }
-  ];
-
   return (
     <div className="space-y-6">
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
+        {statsData.map((stat, index) => (
           <Card key={index} className="bg-white shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">
@@ -97,25 +215,31 @@ const Dashboard = () => {
         {/* Top Products */}
         <Card className="bg-white shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Produk Terlaris</CardTitle>
+            <CardTitle className="text-lg font-semibold">Produk Terlaris Hari Ini</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {topProducts.map((product, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <Badge variant="secondary" className="w-8 h-8 rounded-full flex items-center justify-center">
-                    {index + 1}
-                  </Badge>
-                  <div>
-                    <p className="font-medium text-gray-900">{product.name}</p>
-                    <p className="text-sm text-gray-500">{product.sold} terjual</p>
+            {topProducts.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">Belum ada penjualan hari ini</p>
+              </div>
+            ) : (
+              topProducts.map((product, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <Badge variant="secondary" className="w-8 h-8 rounded-full flex items-center justify-center">
+                      {index + 1}
+                    </Badge>
+                    <div>
+                      <p className="font-medium text-gray-900">{product.name}</p>
+                      <p className="text-sm text-gray-500">{product.sold} terjual</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-gray-900">Rp {product.revenue.toLocaleString('id-ID')}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">{product.revenue}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
@@ -127,22 +251,22 @@ const Dashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[
-              { time: "14:30", action: "Transaksi #001234 - Rp 65,000", status: "success" },
-              { time: "14:25", action: "Stok Chicken Wings berkurang 2 pcs", status: "warning" },
-              { time: "14:20", action: "Transaksi #001233 - Rp 45,000", status: "success" },
-              { time: "14:15", action: "Produk baru ditambahkan: Green Tea Latte", status: "info" },
-              { time: "14:10", action: "Transaksi #001232 - Rp 78,000", status: "success" }
-            ].map((activity, index) => (
-              <div key={index} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded">
-                <div className={`w-2 h-2 rounded-full ${
-                  activity.status === "success" ? "bg-green-400" :
-                  activity.status === "warning" ? "bg-yellow-400" : "bg-blue-400"
-                }`} />
-                <span className="text-sm text-gray-500">{activity.time}</span>
-                <span className="text-sm text-gray-700 flex-1">{activity.action}</span>
+            {activities.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">Belum ada aktivitas hari ini</p>
               </div>
-            ))}
+            ) : (
+              activities.map((activity, index) => (
+                <div key={index} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded">
+                  <div className={`w-2 h-2 rounded-full ${
+                    activity.status === "success" ? "bg-green-400" :
+                    activity.status === "warning" ? "bg-yellow-400" : "bg-blue-400"
+                  }`} />
+                  <span className="text-sm text-gray-500">{activity.time}</span>
+                  <span className="text-sm text-gray-700 flex-1">{activity.action}</span>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
