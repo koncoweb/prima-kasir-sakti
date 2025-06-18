@@ -75,7 +75,8 @@ const POSInterface = () => {
 
   const filteredProducts = productsWithStock.filter(product => {
     const matchesCategory = selectedCategory === "Semua" || product.category?.name === selectedCategory;
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         product.id.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch && product.stock > 0;
   });
 
@@ -378,7 +379,7 @@ const POSInterface = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input 
-                  placeholder="Cari produk..." 
+                  placeholder="Cari produk atau barcode..." 
                   className="pl-10 w-64"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -422,6 +423,9 @@ const POSInterface = () => {
                 <Badge variant="secondary" className="mt-2 text-xs">
                   Stok: {product.stock}
                 </Badge>
+                <div className="mt-2 p-1 bg-gray-50 rounded text-xs text-center font-mono border">
+                  {product.id.slice(0, 8)}...
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -456,6 +460,9 @@ const POSInterface = () => {
                         <h4 className="font-medium text-sm">{item.name}</h4>
                         <p className="text-blue-600 font-semibold">
                           Rp {item.price.toLocaleString('id-ID')}
+                        </p>
+                        <p className="text-xs text-gray-500 font-mono">
+                          {item.id.slice(0, 8)}...
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">

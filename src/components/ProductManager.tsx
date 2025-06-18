@@ -198,8 +198,14 @@ const ProductManager = () => {
                   <p className="text-blue-600 font-bold text-lg mb-2">
                     Rp {product.price.toLocaleString('id-ID')}
                   </p>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-2">
                     <Badge variant="secondary">{product.category?.name}</Badge>
+                  </div>
+                  <div className="bg-gray-50 p-2 rounded border-2 border-dashed border-gray-300">
+                    <div className="text-xs text-gray-600 mb-1">Barcode:</div>
+                    <div className="font-mono text-sm bg-white p-1 rounded border text-center">
+                      {product.id}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -255,6 +261,12 @@ const ProductManager = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="bg-gray-50 p-3 rounded border">
+                <label className="text-sm font-medium text-gray-700">Barcode</label>
+                <div className="font-mono text-sm bg-white p-2 rounded border mt-1 text-center">
+                  {editProduct.id}
+                </div>
               </div>
               <Button onClick={handleUpdateProduct} className="bg-blue-600 hover:bg-blue-700 mt-4">
                 Update Produk
