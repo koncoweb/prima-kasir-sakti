@@ -8,97 +8,74 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Search, Plus, Edit, Trash2, Package } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
-
-interface Product {
-  id: number;
-  name: string;
-  price: number;
-  category: string;
-  stock: number;
-}
+import { useProducts } from "@/hooks/useProducts";
 
 const ProductManager = () => {
-  const [products, setProducts] = useState<Product[]>([
-    { id: 1, name: "Caramel Milkshake", price: 26000, category: "Minuman", stock: 50 },
-    { id: 2, name: "Caramel Mochiato", price: 30000, category: "Minuman", stock: 30 },
-    { id: 3, name: "Cha Tea Latte", price: 29000, category: "Minuman", stock: 25 },
-    { id: 4, name: "Chicken Popcorn", price: 23000, category: "Makanan", stock: 40 },
-    { id: 5, name: "Chicken Stick", price: 20000, category: "Makanan", stock: 35 },
-    { id: 6, name: "Chicken Wings", price: 32000, category: "Makanan", stock: 20 },
-  ]);
-
+  const { products, categories, loading, addProduct, updateProduct, deleteProduct } = useProducts();
+  
   const [newProduct, setNewProduct] = useState({
     name: "",
     price: "",
-    category: "",
-    stock: ""
+    category_id: "",
   });
 
-  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [editProduct, setEditProduct] = useState<any>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const categories = ["Minuman", "Makanan", "Snack", "Dessert"];
-
-  const addProduct = () => {
-    if (!newProduct.name || !newProduct.price || !newProduct.category || !newProduct.stock) {
-      toast({
-        title: "Data tidak lengkap",
-        description: "Silakan isi semua field",
-        variant: "destructive"
-      });
+  const handleAddProduct = async () => {
+    if (!newProduct.name || !newProduct.price || !newProduct.category_id) {
       return;
     }
 
-    const product = {
-      id: Date.now(),
-      name: newProduct.name,
-      price: parseInt(newProduct.price),
-      category: newProduct.category,
-      stock: parseInt(newProduct.stock)
-    };
-
-    setProducts([...products, product]);
-    setNewProduct({ name: "", price: "", category: "", stock: "" });
-    setIsAddModalOpen(false);
-    
-    toast({
-      title: "Produk berhasil ditambahkan",
-      description: `${product.name} telah ditambahkan ke daftar produk`,
-    });
+    try {
+      await addProduct({
+        name: newProduct.name,
+        price: parseInt(newProduct.price),
+        category_id: newProduct.category_id,
+        is_active: true
+      });
+      
+      setNewProduct({ name: "", price: "", category_id: "" });
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error('Error adding product:', error);
+    }
   };
 
-  const updateProduct = () => {
+  const handleUpdateProduct = async () => {
     if (!editProduct) return;
 
-    setProducts(products.map(product => 
-      product.id === editProduct.id ? editProduct : product
-    ));
-    
-    setEditProduct(null);
-    setIsEditModalOpen(false);
-    
-    toast({
-      title: "Produk berhasil diperbarui",
-      description: `${editProduct.name} telah diperbarui`,
-    });
+    try {
+      await updateProduct(editProduct.id, {
+        name: editProduct.name,
+        price: editProduct.price,
+        category_id: editProduct.category_id
+      });
+      
+      setEditProduct(null);
+      setIsEditModalOpen(false);
+    } catch (error) {
+      console.error('Error updating product:', error);
+    }
   };
 
-  const deleteProduct = (id: number) => {
-    const productToDelete = products.find(p => p.id === id);
-    setProducts(products.filter(product => product.id !== id));
-    
-    toast({
-      title: "Produk dihapus",
-      description: `${productToDelete?.name} berhasil dihapus dari daftar`,
-    });
+  const handleDeleteProduct = async (id: string) => {
+    try {
+      await deleteProduct(id);
+    } catch (error) {
+      console.error('Error deleting product:', error);
+    }
   };
 
-  const openEditModal = (product: Product) => {
+  const openEditModal = (product: any) => {
     setEditProduct({ ...product });
     setIsEditModalOpen(true);
   };
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -149,32 +126,22 @@ const ProductManager = () => {
                     <div className="space-y-2">
                       <label htmlFor="category" className="text-sm font-medium">Kategori</label>
                       <Select
-                        value={newProduct.category}
-                        onValueChange={(value) => setNewProduct({...newProduct, category: value})}
+                        value={newProduct.category_id}
+                        onValueChange={(value) => setNewProduct({...newProduct, category_id: value})}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih kategori" />
                         </SelectTrigger>
                         <SelectContent>
                           {categories.map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <label htmlFor="stock" className="text-sm font-medium">Stok</label>
-                      <Input
-                        id="stock"
-                        placeholder="Stok"
-                        type="number"
-                        value={newProduct.stock}
-                        onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})}
-                      />
-                    </div>
-                    <Button onClick={addProduct} className="bg-blue-600 hover:bg-blue-700 mt-4">
+                    <Button onClick={handleAddProduct} className="bg-blue-600 hover:bg-blue-700 mt-4">
                       Tambah Produk
                     </Button>
                   </div>
@@ -217,7 +184,7 @@ const ProductManager = () => {
                           <AlertDialogFooter>
                             <AlertDialogCancel>Batal</AlertDialogCancel>
                             <AlertDialogAction 
-                              onClick={() => deleteProduct(product.id)}
+                              onClick={() => handleDeleteProduct(product.id)}
                               className="bg-red-600 hover:bg-red-700"
                             >
                               Hapus
@@ -232,10 +199,7 @@ const ProductManager = () => {
                     Rp {product.price.toLocaleString('id-ID')}
                   </p>
                   <div className="flex items-center justify-between">
-                    <Badge variant="secondary">{product.category}</Badge>
-                    <Badge variant={product.stock > 10 ? "secondary" : "destructive"}>
-                      Stok: {product.stock}
-                    </Badge>
+                    <Badge variant="secondary">{product.category?.name}</Badge>
                   </div>
                 </CardContent>
               </Card>
@@ -277,32 +241,22 @@ const ProductManager = () => {
               <div className="space-y-2">
                 <label htmlFor="edit-category" className="text-sm font-medium">Kategori</label>
                 <Select
-                  value={editProduct.category}
-                  onValueChange={(value) => setEditProduct({...editProduct, category: value})}
+                  value={editProduct.category_id}
+                  onValueChange={(value) => setEditProduct({...editProduct, category_id: value})}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih kategori" />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <label htmlFor="edit-stock" className="text-sm font-medium">Stok</label>
-                <Input
-                  id="edit-stock"
-                  placeholder="Stok"
-                  type="number"
-                  value={editProduct.stock}
-                  onChange={(e) => setEditProduct({...editProduct, stock: parseInt(e.target.value) || 0})}
-                />
-              </div>
-              <Button onClick={updateProduct} className="bg-blue-600 hover:bg-blue-700 mt-4">
+              <Button onClick={handleUpdateProduct} className="bg-blue-600 hover:bg-blue-700 mt-4">
                 Update Produk
               </Button>
             </div>

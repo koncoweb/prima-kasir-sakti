@@ -4,17 +4,37 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ShoppingCart, Package, Receipt, BarChart3, Plus, Search } from "lucide-react";
+import { ShoppingCart, Package, Receipt, BarChart3, Database } from "lucide-react";
 import POSInterface from "@/components/POSInterface";
 import ProductManager from "@/components/ProductManager";
 import InventoryTracker from "@/components/InventoryTracker";
 import TransactionHistory from "@/components/TransactionHistory";
 import Dashboard from "@/components/Dashboard";
+import { migrateData } from "@/utils/dataMigration";
+import { toast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [isMigrating, setIsMigrating] = useState(false);
+
+  const handleDataMigration = async () => {
+    setIsMigrating(true);
+    try {
+      await migrateData();
+      toast({
+        title: "Migrasi Data Berhasil",
+        description: "Data produk dan inventory telah berhasil dimigrasikan ke Supabase",
+      });
+    } catch (error) {
+      toast({
+        title: "Migrasi Data Gagal",
+        description: "Terjadi kesalahan saat migrasi data",
+        variant: "destructive"
+      });
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
@@ -31,7 +51,16 @@ const Index = () => {
                 <p className="text-gray-600">Point of Sale & Inventory Management</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-4">
+              <Button 
+                onClick={handleDataMigration}
+                disabled={isMigrating}
+                variant="outline"
+                className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+              >
+                <Database className="h-4 w-4 mr-2" />
+                {isMigrating ? "Migrasi..." : "Migrasi Data"}
+              </Button>
               <Badge variant="secondary" className="bg-green-100 text-green-800">
                 Online
               </Badge>

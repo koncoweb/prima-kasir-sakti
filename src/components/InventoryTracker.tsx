@@ -4,17 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Package, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertTriangle, Package } from "lucide-react";
+import { useInventory } from "@/hooks/useInventory";
 
 const InventoryTracker = () => {
-  const [inventory, setInventory] = useState([
-    { id: 1, name: "Caramel Milkshake", currentStock: 50, minStock: 20, maxStock: 100, lastRestock: "2024-01-15" },
-    { id: 2, name: "Caramel Mochiato", currentStock: 30, minStock: 15, maxStock: 80, lastRestock: "2024-01-14" },
-    { id: 3, name: "Cha Tea Latte", currentStock: 8, minStock: 25, maxStock: 75, lastRestock: "2024-01-10" },
-    { id: 4, name: "Chicken Popcorn", currentStock: 40, minStock: 30, maxStock: 120, lastRestock: "2024-01-16" },
-    { id: 5, name: "Chicken Stick", currentStock: 12, minStock: 35, maxStock: 100, lastRestock: "2024-01-12" },
-    { id: 6, name: "Chicken Wings", currentStock: 20, minStock: 15, maxStock: 60, lastRestock: "2024-01-15" },
-  ]);
+  const { inventory, loading, restockItem } = useInventory();
 
   const getStockStatus = (current: number, min: number, max: number) => {
     if (current < min) return { status: 'low', variant: 'destructive' as const, text: 'Stok Rendah' };
@@ -22,15 +16,17 @@ const InventoryTracker = () => {
     return { status: 'normal', variant: 'secondary' as const, text: 'Normal' };
   };
 
-  const restockItem = (id: number, amount: number) => {
-    setInventory(inventory.map(item =>
-      item.id === id
-        ? { ...item, currentStock: item.currentStock + amount, lastRestock: new Date().toISOString().split('T')[0] }
-        : item
-    ));
+  const handleRestock = async (id: string, amount: number) => {
+    if (amount > 0) {
+      await restockItem(id, amount);
+    }
   };
 
-  const lowStockItems = inventory.filter(item => item.currentStock < item.minStock);
+  const lowStockItems = inventory.filter(item => item.current_stock < item.min_stock);
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -48,14 +44,14 @@ const InventoryTracker = () => {
               {lowStockItems.map((item) => (
                 <div key={item.id} className="flex items-center justify-between p-3 bg-white rounded-lg">
                   <div>
-                    <p className="font-medium text-gray-900">{item.name}</p>
+                    <p className="font-medium text-gray-900">{item.product?.name}</p>
                     <p className="text-sm text-red-600">
-                      Stok tersisa: {item.currentStock} (Min: {item.minStock})
+                      Stok tersisa: {item.current_stock} (Min: {item.min_stock})
                     </p>
                   </div>
                   <Button 
                     size="sm" 
-                    onClick={() => restockItem(item.id, item.minStock)}
+                    onClick={() => handleRestock(item.id, item.min_stock)}
                     className="bg-red-600 hover:bg-red-700"
                   >
                     Restock
@@ -100,7 +96,11 @@ const InventoryTracker = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">Rp 2.8M</div>
+            <div className="text-2xl font-bold text-green-600">
+              Rp {inventory.reduce((total, item) => 
+                total + (item.current_stock * (item.product?.price || 0)), 0
+              ).toLocaleString('id-ID')}
+            </div>
             <p className="text-xs text-gray-500 mt-1">Estimasi nilai</p>
           </CardContent>
         </Card>
@@ -114,7 +114,7 @@ const InventoryTracker = () => {
         <CardContent>
           <div className="space-y-4">
             {inventory.map((item) => {
-              const stockStatus = getStockStatus(item.currentStock, item.minStock, item.maxStock);
+              const stockStatus = getStockStatus(item.current_stock, item.min_stock, item.max_stock);
               return (
                 <div key={item.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                   <div className="flex items-center space-x-4">
@@ -122,9 +122,9 @@ const InventoryTracker = () => {
                       <Package className="h-6 w-6 text-gray-600" />
                     </div>
                     <div>
-                      <h3 className="font-medium text-gray-900">{item.name}</h3>
+                      <h3 className="font-medium text-gray-900">{item.product?.name}</h3>
                       <p className="text-sm text-gray-500">
-                        Terakhir restock: {item.lastRestock}
+                        Terakhir restock: {item.last_restock_date || 'Belum ada'}
                       </p>
                     </div>
                   </div>
@@ -132,12 +132,12 @@ const InventoryTracker = () => {
                   <div className="flex items-center space-x-6">
                     <div className="text-center">
                       <p className="text-sm text-gray-500">Stok Saat Ini</p>
-                      <p className="font-bold text-lg">{item.currentStock}</p>
+                      <p className="font-bold text-lg">{item.current_stock}</p>
                     </div>
                     
                     <div className="text-center">
                       <p className="text-sm text-gray-500">Min/Max</p>
-                      <p className="font-medium">{item.minStock}/{item.maxStock}</p>
+                      <p className="font-medium">{item.min_stock}/{item.max_stock}</p>
                     </div>
                     
                     <Badge variant={stockStatus.variant}>
@@ -157,7 +157,7 @@ const InventoryTracker = () => {
                           const input = document.getElementById(`restock-${item.id}`) as HTMLInputElement;
                           const amount = parseInt(input.value) || 0;
                           if (amount > 0) {
-                            restockItem(item.id, amount);
+                            handleRestock(item.id, amount);
                             input.value = '';
                           }
                         }}
