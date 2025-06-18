@@ -1,97 +1,117 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Eye, Download, Calendar } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+
+interface TransactionItem {
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
+interface Transaction {
+  id: string;
+  transaction_number: string;
+  transaction_date: string;
+  transaction_time: string;
+  subtotal: number;
+  tax_amount: number;
+  total_amount: number;
+  payment_method: string;
+  cashier_name: string;
+  items: TransactionItem[];
+}
 
 const TransactionHistory = () => {
-  const [transactions] = useState([
-    {
-      id: "TRX001234",
-      date: "2024-01-16",
-      time: "14:30",
-      items: [
-        { name: "Caramel Milkshake", qty: 2, price: 26000 },
-        { name: "Chicken Wings", qty: 1, price: 32000 }
-      ],
-      subtotal: 84000,
-      tax: 8400,
-      total: 92400,
-      paymentMethod: "Cash",
-      cashier: "Admin"
-    },
-    {
-      id: "TRX001233",
-      date: "2024-01-16",
-      time: "14:25",
-      items: [
-        { name: "Coffee Latte", qty: 1, price: 30000 },
-        { name: "Dino Nugget", qty: 1, price: 12000 }
-      ],
-      subtotal: 42000,
-      tax: 4200,
-      total: 46200,
-      paymentMethod: "Card",
-      cashier: "Admin"
-    },
-    {
-      id: "TRX001232",
-      date: "2024-01-16",
-      time: "14:20",
-      items: [
-        { name: "Chocolate Frapucino", qty: 1, price: 39000 },
-        { name: "Custom Cake", qty: 1, price: 45000 }
-      ],
-      subtotal: 84000,
-      tax: 8400,
-      total: 92400,
-      paymentMethod: "Cash",
-      cashier: "Admin"
-    },
-    {
-      id: "TRX001231",
-      date: "2024-01-16",
-      time: "14:15",
-      items: [
-        { name: "Cha Tea Latte", qty: 3, price: 29000 }
-      ],
-      subtotal: 87000,
-      tax: 8700,
-      total: 95700,
-      paymentMethod: "E-Wallet",
-      cashier: "Admin"
-    },
-    {
-      id: "TRX001230",
-      date: "2024-01-16",
-      time: "14:10",
-      items: [
-        { name: "Chicken Popcorn", qty: 2, price: 23000 },
-        { name: "Caramel Mochiato", qty: 1, price: 30000 }
-      ],
-      subtotal: 76000,
-      tax: 7600,
-      total: 83600,
-      paymentMethod: "Cash",
-      cashier: "Admin"
-    }
-  ]);
-
-  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [filterDate, setFilterDate] = useState("");
   const [filterPayment, setFilterPayment] = useState("");
+  const [searchId, setSearchId] = useState("");
+
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      const { data: transactionData, error } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          transaction_items (
+            product_name,
+            quantity,
+            unit_price,
+            total_price
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching transactions:', error);
+        toast({
+          title: "Error",
+          description: "Gagal mengambil data transaksi",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const formattedTransactions: Transaction[] = transactionData?.map(transaction => ({
+        id: transaction.id,
+        transaction_number: transaction.transaction_number,
+        transaction_date: transaction.transaction_date,
+        transaction_time: transaction.transaction_time,
+        subtotal: transaction.subtotal,
+        tax_amount: transaction.tax_amount,
+        total_amount: transaction.total_amount,
+        payment_method: transaction.payment_method,
+        cashier_name: transaction.cashier_name,
+        items: transaction.transaction_items || []
+      })) || [];
+
+      setTransactions(formattedTransactions);
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Terjadi kesalahan saat mengambil data",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
 
   const filteredTransactions = transactions.filter(transaction => {
-    const dateMatch = !filterDate || transaction.date === filterDate;
-    const paymentMatch = !filterPayment || filterPayment === "all" || transaction.paymentMethod === filterPayment;
-    return dateMatch && paymentMatch;
+    const dateMatch = !filterDate || transaction.transaction_date === filterDate;
+    const paymentMatch = !filterPayment || filterPayment === "all" || transaction.payment_method === filterPayment;
+    const searchMatch = !searchId || transaction.transaction_number.toLowerCase().includes(searchId.toLowerCase());
+    return dateMatch && paymentMatch && searchMatch;
   });
 
-  const totalSales = filteredTransactions.reduce((sum, transaction) => sum + transaction.total, 0);
+  const totalSales = filteredTransactions.reduce((sum, transaction) => sum + transaction.total_amount, 0);
   const totalTransactions = filteredTransactions.length;
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <p>Memuat data transaksi...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -100,7 +120,7 @@ const TransactionHistory = () => {
         <Card className="bg-white shadow-sm">
           <CardHeader>
             <CardTitle className="text-sm font-medium text-gray-600">
-              Total Transaksi Hari Ini
+              Total Transaksi
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -119,7 +139,7 @@ const TransactionHistory = () => {
             <div className="text-2xl font-bold text-green-600">
               Rp {totalSales.toLocaleString('id-ID')}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Hari ini</p>
+            <p className="text-xs text-gray-500 mt-1">Total</p>
           </CardContent>
         </Card>
 
@@ -146,7 +166,12 @@ const TransactionHistory = () => {
             <div className="flex items-center space-x-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input placeholder="Cari ID transaksi..." className="pl-10 w-48" />
+                <Input 
+                  placeholder="Cari ID transaksi..." 
+                  className="pl-10 w-48"
+                  value={searchId}
+                  onChange={(e) => setSearchId(e.target.value)}
+                />
               </div>
               <Input
                 type="date"
@@ -165,66 +190,72 @@ const TransactionHistory = () => {
                   <SelectItem value="E-Wallet">E-Wallet</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline">
+              <Button variant="outline" onClick={fetchTransactions}>
                 <Download className="h-4 w-4 mr-2" />
-                Export
+                Refresh
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredTransactions.map((transaction) => (
-              <div
-                key={transaction.id}
-                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="bg-blue-100 p-3 rounded-lg">
-                    <Calendar className="h-5 w-5 text-blue-600" />
+          {filteredTransactions.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Tidak ada transaksi ditemukan</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredTransactions.map((transaction) => (
+                <div
+                  key={transaction.id}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="bg-blue-100 p-3 rounded-lg">
+                      <Calendar className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-900">{transaction.transaction_number}</h3>
+                      <p className="text-sm text-gray-500">
+                        {transaction.transaction_date} - {transaction.transaction_time} | Kasir: {transaction.cashier_name}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {transaction.items.length} item(s)
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900">{transaction.id}</h3>
-                    <p className="text-sm text-gray-500">
-                      {transaction.date} - {transaction.time} | Kasir: {transaction.cashier}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {transaction.items.length} item(s)
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex items-center space-x-4">
-                  <div className="text-center">
-                    <p className="font-bold text-green-600">
-                      Rp {transaction.total.toLocaleString('id-ID')}
-                    </p>
-                    <Badge variant="secondary" className="text-xs">
-                      {transaction.paymentMethod}
-                    </Badge>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-center">
+                      <p className="font-bold text-green-600">
+                        Rp {transaction.total_amount.toLocaleString('id-ID')}
+                      </p>
+                      <Badge variant="secondary" className="text-xs">
+                        {transaction.payment_method}
+                      </Badge>
+                    </div>
+                    
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setSelectedTransaction(transaction)}
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      Detail
+                    </Button>
                   </div>
-                  
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setSelectedTransaction(transaction)}
-                  >
-                    <Eye className="h-3 w-3 mr-1" />
-                    Detail
-                  </Button>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Transaction Detail Modal (simplified) */}
+      {/* Transaction Detail Modal */}
       {selectedTransaction && (
         <Card className="bg-white shadow-sm border-2 border-blue-200">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Detail Transaksi {selectedTransaction.id}</CardTitle>
+              <CardTitle>Detail Transaksi {selectedTransaction.transaction_number}</CardTitle>
               <Button
                 variant="outline"
                 onClick={() => setSelectedTransaction(null)}
@@ -238,11 +269,11 @@ const TransactionHistory = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Tanggal & Waktu</p>
-                  <p className="font-medium">{selectedTransaction.date} - {selectedTransaction.time}</p>
+                  <p className="font-medium">{selectedTransaction.transaction_date} - {selectedTransaction.transaction_time}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Metode Pembayaran</p>
-                  <p className="font-medium">{selectedTransaction.paymentMethod}</p>
+                  <p className="font-medium">{selectedTransaction.payment_method}</p>
                 </div>
               </div>
               
@@ -251,8 +282,8 @@ const TransactionHistory = () => {
                 <div className="space-y-2">
                   {selectedTransaction.items.map((item, index) => (
                     <div key={index} className="flex justify-between p-2 bg-gray-50 rounded">
-                      <span>{item.name} x{item.qty}</span>
-                      <span>Rp {(item.price * item.qty).toLocaleString('id-ID')}</span>
+                      <span>{item.product_name} x{item.quantity}</span>
+                      <span>Rp {item.total_price.toLocaleString('id-ID')}</span>
                     </div>
                   ))}
                 </div>
@@ -265,11 +296,11 @@ const TransactionHistory = () => {
                 </div>
                 <div className="flex justify-between mb-2">
                   <span>Pajak (10%):</span>
-                  <span>Rp {selectedTransaction.tax.toLocaleString('id-ID')}</span>
+                  <span>Rp {selectedTransaction.tax_amount.toLocaleString('id-ID')}</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total:</span>
-                  <span className="text-green-600">Rp {selectedTransaction.total.toLocaleString('id-ID')}</span>
+                  <span className="text-green-600">Rp {selectedTransaction.total_amount.toLocaleString('id-ID')}</span>
                 </div>
               </div>
             </div>
