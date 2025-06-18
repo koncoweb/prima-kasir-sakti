@@ -44,7 +44,11 @@ const Index = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="bg-blue-600 p-3 rounded-lg">
-                <ShoppingCart className="h-6 w-6 text-white" />
+                <img 
+                  src="/lovable-uploads/973ab159-0b2c-4849-a27b-09eb6f1a4bf6.png" 
+                  alt="Shopping Cart Logo" 
+                  className="h-6 w-6"
+                />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Sistem POS</h1>
