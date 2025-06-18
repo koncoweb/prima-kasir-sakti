@@ -86,7 +86,7 @@ const TransactionHistory = () => {
 
   const filteredTransactions = transactions.filter(transaction => {
     const dateMatch = !filterDate || transaction.date === filterDate;
-    const paymentMatch = !filterPayment || transaction.paymentMethod === filterPayment;
+    const paymentMatch = !filterPayment || filterPayment === "all" || transaction.paymentMethod === filterPayment;
     return dateMatch && paymentMatch;
   });
 
@@ -159,7 +159,7 @@ const TransactionHistory = () => {
                   <SelectValue placeholder="Metode Bayar" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua</SelectItem>
+                  <SelectItem value="all">Semua</SelectItem>
                   <SelectItem value="Cash">Cash</SelectItem>
                   <SelectItem value="Card">Kartu</SelectItem>
                   <SelectItem value="E-Wallet">E-Wallet</SelectItem>
