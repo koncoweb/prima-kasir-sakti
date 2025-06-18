@@ -21,6 +21,8 @@ interface ReceiptProps {
   taxAmount: number;
   taxRate: number;
   total: number;
+  paymentAmount: number;
+  changeAmount: number;
   paymentMethod: string;
   cashierName: string;
   date: string;
@@ -38,6 +40,8 @@ const Receipt: React.FC<ReceiptProps> = ({
   taxAmount,
   taxRate,
   total,
+  paymentAmount,
+  changeAmount,
   paymentMethod,
   cashierName,
   date,
@@ -190,12 +194,12 @@ const Receipt: React.FC<ReceiptProps> = ({
           
           <div class="summary-row">
             <span>Bayar (${paymentMethod}):</span>
-            <span>Rp ${Math.round(total).toLocaleString('id-ID')}</span>
+            <span>Rp ${Math.round(paymentAmount).toLocaleString('id-ID')}</span>
           </div>
           
           <div class="summary-row">
             <span>Kembali:</span>
-            <span>Rp 0</span>
+            <span>Rp ${Math.round(changeAmount).toLocaleString('id-ID')}</span>
           </div>
           
           <div class="receipt-footer">
@@ -234,6 +238,12 @@ const Receipt: React.FC<ReceiptProps> = ({
       <div className="text-center mb-4">
         <div className="text-2xl font-bold text-green-600">
           Rp {Math.round(total).toLocaleString('id-ID')}
+        </div>
+        <div className="text-sm text-gray-600 mt-2">
+          Bayar: Rp {Math.round(paymentAmount).toLocaleString('id-ID')}
+        </div>
+        <div className="text-sm text-gray-600">
+          Kembali: Rp {Math.round(changeAmount).toLocaleString('id-ID')}
         </div>
       </div>
       
