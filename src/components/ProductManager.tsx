@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Search, Plus, Edit, Trash2, Package } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -24,6 +25,8 @@ const ProductManager = () => {
     category: "",
     stock: ""
   });
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const categories = ["Minuman", "Makanan", "Snack", "Dessert"];
 
@@ -47,6 +50,7 @@ const ProductManager = () => {
 
     setProducts([...products, product]);
     setNewProduct({ name: "", price: "", category: "", stock: "" });
+    setIsModalOpen(false);
     
     toast({
       title: "Produk berhasil ditambahkan",
@@ -64,65 +68,84 @@ const ProductManager = () => {
 
   return (
     <div className="space-y-6">
-      {/* Add Product Form */}
-      <Card className="bg-white shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Plus className="h-5 w-5" />
-            <span>Tambah Produk Baru</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Input
-              placeholder="Nama Produk"
-              value={newProduct.name}
-              onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-            />
-            <Input
-              placeholder="Harga"
-              type="number"
-              value={newProduct.price}
-              onChange={(e) => setNewProduct({...newProduct, price: e.target.value})}
-            />
-            <Select
-              value={newProduct.category}
-              onValueChange={(value) => setNewProduct({...newProduct, category: value})}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Kategori" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="flex space-x-2">
-              <Input
-                placeholder="Stok"
-                type="number"
-                value={newProduct.stock}
-                onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})}
-              />
-              <Button onClick={addProduct} className="bg-blue-600 hover:bg-blue-700">
-                Tambah
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Products List */}
       <Card className="bg-white shadow-sm">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Daftar Produk</CardTitle>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input placeholder="Cari produk..." className="pl-10 w-64" />
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input placeholder="Cari produk..." className="pl-10 w-64" />
+              </div>
+              <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tambah Produk
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center space-x-2">
+                      <Plus className="h-5 w-5" />
+                      <span>Tambah Produk Baru</span>
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                      <label htmlFor="name" className="text-sm font-medium">Nama Produk</label>
+                      <Input
+                        id="name"
+                        placeholder="Nama Produk"
+                        value={newProduct.name}
+                        onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="price" className="text-sm font-medium">Harga</label>
+                      <Input
+                        id="price"
+                        placeholder="Harga"
+                        type="number"
+                        value={newProduct.price}
+                        onChange={(e) => setNewProduct({...newProduct, price: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="category" className="text-sm font-medium">Kategori</label>
+                      <Select
+                        value={newProduct.category}
+                        onValueChange={(value) => setNewProduct({...newProduct, category: value})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih kategori" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="stock" className="text-sm font-medium">Stok</label>
+                      <Input
+                        id="stock"
+                        placeholder="Stok"
+                        type="number"
+                        value={newProduct.stock}
+                        onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})}
+                      />
+                    </div>
+                    <Button onClick={addProduct} className="bg-blue-600 hover:bg-blue-700 mt-4">
+                      Tambah Produk
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </CardHeader>
