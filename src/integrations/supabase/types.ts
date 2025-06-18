@@ -160,10 +160,12 @@ export type Database = {
       transactions: {
         Row: {
           cashier_name: string
+          change_amount: number
           created_at: string | null
           discount_amount: number
           discount_percentage: number | null
           id: string
+          payment_amount: number
           payment_method: string
           subtotal: number
           tax_amount: number
@@ -174,10 +176,12 @@ export type Database = {
         }
         Insert: {
           cashier_name: string
+          change_amount?: number
           created_at?: string | null
           discount_amount?: number
           discount_percentage?: number | null
           id?: string
+          payment_amount?: number
           payment_method: string
           subtotal: number
           tax_amount: number
@@ -188,10 +192,12 @@ export type Database = {
         }
         Update: {
           cashier_name?: string
+          change_amount?: number
           created_at?: string | null
           discount_amount?: number
           discount_percentage?: number | null
           id?: string
+          payment_amount?: number
           payment_method?: string
           subtotal?: number
           tax_amount?: number

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, X, ShoppingCart, Package, Percent, Calculator } from "lucide-react";
+import { Search, Plus, X, ShoppingCart, Package, Percent, Calculator, Banknote } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useProducts } from "@/hooks/useProducts";
 import { useInventory } from "@/hooks/useInventory";
@@ -36,6 +36,8 @@ interface CompletedTransaction {
   taxAmount: number;
   taxRate: number;
   total: number;
+  paymentAmount: number;
+  changeAmount: number;
   paymentMethod: string;
   cashierName: string;
   date: string;
@@ -49,6 +51,8 @@ const POSInterface = () => {
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
   const [discountValue, setDiscountValue] = useState(0);
   const [total, setTotal] = useState(0);
+  const [paymentAmount, setPaymentAmount] = useState(0);
+  const [changeAmount, setChangeAmount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -160,6 +164,11 @@ const POSInterface = () => {
     setTotal(finalTotal);
   };
 
+  const calculateChange = () => {
+    const change = Math.max(0, paymentAmount - total);
+    setChangeAmount(change);
+  };
+
   const getDiscountAmount = () => {
     if (discountType === 'percentage') {
       return (subtotal * discountValue) / 100;
@@ -188,6 +197,15 @@ const POSInterface = () => {
       return;
     }
 
+    if (paymentAmount < total) {
+      toast({
+        title: "Uang tidak mencukupi",
+        description: `Kurang: Rp ${(total - paymentAmount).toLocaleString('id-ID')}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -198,7 +216,7 @@ const POSInterface = () => {
       const date = now.toLocaleDateString('id-ID');
       const time = now.toLocaleTimeString('id-ID');
       
-      // Insert transaction with discount information
+      // Insert transaction with payment and change information
       const { data: transaction, error: transactionError } = await supabase
         .from('transactions')
         .insert([{
@@ -208,6 +226,8 @@ const POSInterface = () => {
           discount_percentage: discountType === 'percentage' ? discountValue : null,
           tax_amount: Math.round(taxAmount),
           total_amount: Math.round(total),
+          payment_amount: Math.round(paymentAmount),
+          change_amount: Math.round(changeAmount),
           payment_method: 'Cash',
           cashier_name: 'Admin'
         }])
@@ -264,6 +284,8 @@ const POSInterface = () => {
         taxAmount: Math.round(taxAmount),
         taxRate,
         total,
+        paymentAmount: Math.round(paymentAmount),
+        changeAmount: Math.round(changeAmount),
         paymentMethod: 'Cash',
         cashierName: 'Admin',
         date,
@@ -296,6 +318,8 @@ const POSInterface = () => {
     setSubtotal(0);
     setTotal(0);
     setDiscountValue(0);
+    setPaymentAmount(0);
+    setChangeAmount(0);
     setShowReceipt(false);
     setCompletedTransaction(null);
   };
@@ -303,6 +327,33 @@ const POSInterface = () => {
   useEffect(() => {
     calculateTotals();
   }, [cart, taxRate, discountType, discountValue]);
+
+  useEffect(() => {
+    calculateChange();
+  }, [paymentAmount, total]);
+
+  if (showReceipt && completedTransaction) {
+    return (
+      <Receipt
+        transactionNumber={completedTransaction.transactionNumber}
+        items={completedTransaction.items}
+        subtotal={completedTransaction.subtotal}
+        discountAmount={completedTransaction.discountAmount}
+        discountType={completedTransaction.discountType}
+        discountValue={completedTransaction.discountValue}
+        taxAmount={completedTransaction.taxAmount}
+        taxRate={completedTransaction.taxRate}
+        total={completedTransaction.total}
+        paymentAmount={completedTransaction.paymentAmount}
+        changeAmount={completedTransaction.changeAmount}
+        paymentMethod={completedTransaction.paymentMethod}
+        cashierName={completedTransaction.cashierName}
+        date={completedTransaction.date}
+        time={completedTransaction.time}
+        onPrint={handlePrintComplete}
+      />
+    );
+  }
 
   if (productsLoading || inventoryLoading) {
     return (
@@ -527,9 +578,39 @@ const POSInterface = () => {
                   </div>
                 </div>
                 
+                <Separator />
+                
+                {/* Payment Section */}
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="payment-amount">Uang Dari Pelanggan (Rp)</Label>
+                    <div className="relative">
+                      <Banknote className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="payment-amount"
+                        type="number"
+                        min="0"
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                        className="pl-10"
+                        placeholder="Masukkan nominal uang"
+                      />
+                    </div>
+                  </div>
+                  
+                  {paymentAmount > 0 && (
+                    <div className="flex justify-between text-lg font-semibold">
+                      <span>Kembalian</span>
+                      <span className={changeAmount >= 0 ? "text-blue-600" : "text-red-600"}>
+                        Rp {changeAmount.toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                
                 <Button 
                   onClick={processPayment}
-                  disabled={isProcessing}
+                  disabled={isProcessing || paymentAmount < total}
                   className="w-full bg-green-600 hover:bg-green-700 text-white"
                   size="lg"
                 >
