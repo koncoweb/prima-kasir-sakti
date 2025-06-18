@@ -6,11 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Search, Plus, Edit, Trash2, Package } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  category: string;
+  stock: number;
+}
+
 const ProductManager = () => {
-  const [products, setProducts] = useState([
+  const [products, setProducts] = useState<Product[]>([
     { id: 1, name: "Caramel Milkshake", price: 26000, category: "Minuman", stock: 50 },
     { id: 2, name: "Caramel Mochiato", price: 30000, category: "Minuman", stock: 30 },
     { id: 3, name: "Cha Tea Latte", price: 29000, category: "Minuman", stock: 25 },
@@ -26,7 +35,9 @@ const ProductManager = () => {
     stock: ""
   });
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const categories = ["Minuman", "Makanan", "Snack", "Dessert"];
 
@@ -50,7 +61,7 @@ const ProductManager = () => {
 
     setProducts([...products, product]);
     setNewProduct({ name: "", price: "", category: "", stock: "" });
-    setIsModalOpen(false);
+    setIsAddModalOpen(false);
     
     toast({
       title: "Produk berhasil ditambahkan",
@@ -58,12 +69,35 @@ const ProductManager = () => {
     });
   };
 
-  const deleteProduct = (id) => {
+  const updateProduct = () => {
+    if (!editProduct) return;
+
+    setProducts(products.map(product => 
+      product.id === editProduct.id ? editProduct : product
+    ));
+    
+    setEditProduct(null);
+    setIsEditModalOpen(false);
+    
+    toast({
+      title: "Produk berhasil diperbarui",
+      description: `${editProduct.name} telah diperbarui`,
+    });
+  };
+
+  const deleteProduct = (id: number) => {
+    const productToDelete = products.find(p => p.id === id);
     setProducts(products.filter(product => product.id !== id));
+    
     toast({
       title: "Produk dihapus",
-      description: "Produk berhasil dihapus dari daftar",
+      description: `${productToDelete?.name} berhasil dihapus dari daftar`,
     });
+  };
+
+  const openEditModal = (product: Product) => {
+    setEditProduct({ ...product });
+    setIsEditModalOpen(true);
   };
 
   return (
@@ -78,7 +112,7 @@ const ProductManager = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input placeholder="Cari produk..." className="pl-10 w-64" />
               </div>
-              <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+              <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
                 <DialogTrigger asChild>
                   <Button className="bg-blue-600 hover:bg-blue-700">
                     <Plus className="h-4 w-4 mr-2" />
@@ -159,16 +193,38 @@ const ProductManager = () => {
                       <Package className="h-8 w-8 text-gray-400" />
                     </div>
                     <div className="flex space-x-1">
-                      <Button size="sm" variant="outline">
-                        <Edit className="h-3 w-3" />
-                      </Button>
                       <Button 
                         size="sm" 
-                        variant="destructive"
-                        onClick={() => deleteProduct(product.id)}
+                        variant="outline"
+                        onClick={() => openEditModal(product)}
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Edit className="h-3 w-3" />
                       </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="destructive">
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Hapus Produk</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Apakah Anda yakin ingin menghapus produk "{product.name}"? 
+                              Tindakan ini tidak dapat dibatalkan.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Batal</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => deleteProduct(product.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Hapus
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                   <h3 className="font-medium text-gray-900 mb-2">{product.name}</h3>
@@ -187,6 +243,72 @@ const ProductManager = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Product Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Edit className="h-5 w-5" />
+              <span>Edit Produk</span>
+            </DialogTitle>
+          </DialogHeader>
+          {editProduct && (
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <label htmlFor="edit-name" className="text-sm font-medium">Nama Produk</label>
+                <Input
+                  id="edit-name"
+                  placeholder="Nama Produk"
+                  value={editProduct.name}
+                  onChange={(e) => setEditProduct({...editProduct, name: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="edit-price" className="text-sm font-medium">Harga</label>
+                <Input
+                  id="edit-price"
+                  placeholder="Harga"
+                  type="number"
+                  value={editProduct.price}
+                  onChange={(e) => setEditProduct({...editProduct, price: parseInt(e.target.value) || 0})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="edit-category" className="text-sm font-medium">Kategori</label>
+                <Select
+                  value={editProduct.category}
+                  onValueChange={(value) => setEditProduct({...editProduct, category: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih kategori" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="edit-stock" className="text-sm font-medium">Stok</label>
+                <Input
+                  id="edit-stock"
+                  placeholder="Stok"
+                  type="number"
+                  value={editProduct.stock}
+                  onChange={(e) => setEditProduct({...editProduct, stock: parseInt(e.target.value) || 0})}
+                />
+              </div>
+              <Button onClick={updateProduct} className="bg-blue-600 hover:bg-blue-700 mt-4">
+                Update Produk
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
