@@ -16,13 +16,13 @@ const InventoryTracker = () => {
     { id: 6, name: "Chicken Wings", currentStock: 20, minStock: 15, maxStock: 60, lastRestock: "2024-01-15" },
   ]);
 
-  const getStockStatus = (current, min, max) => {
-    if (current < min) return { status: 'low', color: 'destructive', text: 'Stok Rendah' };
-    if (current > max * 0.8) return { status: 'high', color: 'secondary', text: 'Stok Tinggi' };
-    return { status: 'normal', color: 'secondary', text: 'Normal' };
+  const getStockStatus = (current: number, min: number, max: number) => {
+    if (current < min) return { status: 'low', variant: 'destructive' as const, text: 'Stok Rendah' };
+    if (current > max * 0.8) return { status: 'high', variant: 'secondary' as const, text: 'Stok Tinggi' };
+    return { status: 'normal', variant: 'secondary' as const, text: 'Normal' };
   };
 
-  const restockItem = (id, amount) => {
+  const restockItem = (id: number, amount: number) => {
     setInventory(inventory.map(item =>
       item.id === id
         ? { ...item, currentStock: item.currentStock + amount, lastRestock: new Date().toISOString().split('T')[0] }
@@ -140,7 +140,7 @@ const InventoryTracker = () => {
                       <p className="font-medium">{item.minStock}/{item.maxStock}</p>
                     </div>
                     
-                    <Badge variant={stockStatus.color}>
+                    <Badge variant={stockStatus.variant}>
                       {stockStatus.text}
                     </Badge>
                     
@@ -171,7 +171,7 @@ const InventoryTracker = () => {
             })}
           </div>
         </CardContent>
-      </Card>
+      </div>
     </div>
   );
 };
