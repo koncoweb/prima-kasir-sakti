@@ -161,6 +161,8 @@ export type Database = {
         Row: {
           cashier_name: string
           created_at: string | null
+          discount_amount: number
+          discount_percentage: number | null
           id: string
           payment_method: string
           subtotal: number
@@ -173,6 +175,8 @@ export type Database = {
         Insert: {
           cashier_name: string
           created_at?: string | null
+          discount_amount?: number
+          discount_percentage?: number | null
           id?: string
           payment_method: string
           subtotal: number
@@ -185,6 +189,8 @@ export type Database = {
         Update: {
           cashier_name?: string
           created_at?: string | null
+          discount_amount?: number
+          discount_percentage?: number | null
           id?: string
           payment_method?: string
           subtotal?: number

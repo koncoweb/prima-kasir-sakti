@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Search, Plus, X, ShoppingCart, Package } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Search, Plus, X, ShoppingCart, Package, Percent, Calculator } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useProducts } from "@/hooks/useProducts";
 import { useInventory } from "@/hooks/useInventory";
@@ -22,6 +23,10 @@ interface CartItem {
 
 const POSInterface = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [subtotal, setSubtotal] = useState(0);
+  const [taxRate, setTaxRate] = useState(10); // Default 10%
+  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
+  const [discountValue, setDiscountValue] = useState(0);
   const [total, setTotal] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -77,7 +82,6 @@ const POSInterface = () => {
       }]);
     }
     
-    calculateTotal();
     toast({
       title: "Produk ditambahkan",
       description: `${product.name} berhasil ditambahkan ke keranjang`,
@@ -87,7 +91,6 @@ const POSInterface = () => {
   const removeFromCart = (productId: string) => {
     const updatedCart = cart.filter(item => item.id !== productId);
     setCart(updatedCart);
-    calculateTotal();
   };
 
   const updateQuantity = (productId: string, newQuantity: number) => {
@@ -112,12 +115,39 @@ const POSInterface = () => {
         : item
     );
     setCart(updatedCart);
-    calculateTotal();
   };
 
-  const calculateTotal = () => {
-    const newTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    setTotal(newTotal);
+  const calculateTotals = () => {
+    const newSubtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    setSubtotal(newSubtotal);
+
+    // Calculate discount
+    let discountAmount = 0;
+    if (discountType === 'percentage') {
+      discountAmount = (newSubtotal * discountValue) / 100;
+    } else {
+      discountAmount = discountValue;
+    }
+
+    // Apply discount first, then tax
+    const discountedSubtotal = Math.max(0, newSubtotal - discountAmount);
+    const taxAmount = (discountedSubtotal * taxRate) / 100;
+    const finalTotal = discountedSubtotal + taxAmount;
+    
+    setTotal(finalTotal);
+  };
+
+  const getDiscountAmount = () => {
+    if (discountType === 'percentage') {
+      return (subtotal * discountValue) / 100;
+    }
+    return discountValue;
+  };
+
+  const getTaxAmount = () => {
+    const discountAmount = getDiscountAmount();
+    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+    return (discountedSubtotal * taxRate) / 100;
   };
 
   const generateTransactionNumber = () => {
@@ -138,21 +168,22 @@ const POSInterface = () => {
     setIsProcessing(true);
 
     try {
-      const subtotal = total;
-      const taxAmount = Math.round(total * 0.1);
-      const totalAmount = subtotal + taxAmount;
+      const discountAmount = getDiscountAmount();
+      const taxAmount = getTaxAmount();
       const transactionNumber = generateTransactionNumber();
       
-      // Insert transaction
+      // Insert transaction with discount information
       const { data: transaction, error: transactionError } = await supabase
         .from('transactions')
         .insert([{
           transaction_number: transactionNumber,
           subtotal: subtotal,
-          tax_amount: taxAmount,
-          total_amount: totalAmount,
-          payment_method: 'Cash', // Default to cash, can be made dynamic later
-          cashier_name: 'Admin' // Default cashier, can be made dynamic later
+          discount_amount: Math.round(discountAmount),
+          discount_percentage: discountType === 'percentage' ? discountValue : null,
+          tax_amount: Math.round(taxAmount),
+          total_amount: Math.round(total),
+          payment_method: 'Cash',
+          cashier_name: 'Admin'
         }])
         .select()
         .single();
@@ -196,8 +227,11 @@ const POSInterface = () => {
         description: `Nomor transaksi: ${transactionNumber}`,
       });
       
+      // Reset form
       setCart([]);
+      setSubtotal(0);
       setTotal(0);
+      setDiscountValue(0);
     } catch (error) {
       console.error('Error processing payment:', error);
       toast({
@@ -211,8 +245,8 @@ const POSInterface = () => {
   };
 
   useEffect(() => {
-    calculateTotal();
-  }, [cart]);
+    calculateTotals();
+  }, [cart, taxRate, discountType, discountValue]);
 
   if (productsLoading || inventoryLoading) {
     return (
@@ -356,20 +390,83 @@ const POSInterface = () => {
                 
                 <Separator />
                 
+                {/* Tax and Discount Controls */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="tax-rate">Pajak (%)</Label>
+                      <div className="relative">
+                        <Calculator className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          id="tax-rate"
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={taxRate}
+                          onChange={(e) => setTaxRate(Number(e.target.value))}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="discount-type">Tipe Diskon</Label>
+                      <select
+                        id="discount-type"
+                        value={discountType}
+                        onChange={(e) => setDiscountType(e.target.value as 'percentage' | 'fixed')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="percentage">Persen (%)</option>
+                        <option value="fixed">Nominal (Rp)</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="discount-value">
+                      Diskon {discountType === 'percentage' ? '(%)' : '(Rp)'}
+                    </Label>
+                    <div className="relative">
+                      <Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="discount-value"
+                        type="number"
+                        min="0"
+                        max={discountType === 'percentage' ? 100 : subtotal}
+                        value={discountValue}
+                        onChange={(e) => setDiscountValue(Number(e.target.value))}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                {/* Price Breakdown */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Subtotal</span>
-                    <span>Rp {total.toLocaleString('id-ID')}</span>
+                    <span>Rp {subtotal.toLocaleString('id-ID')}</span>
                   </div>
+                  {getDiscountAmount() > 0 && (
+                    <div className="flex justify-between text-sm text-red-600">
+                      <span>
+                        Diskon {discountType === 'percentage' ? `(${discountValue}%)` : ''}
+                      </span>
+                      <span>-Rp {getDiscountAmount().toLocaleString('id-ID')}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
-                    <span>Pajak (10%)</span>
-                    <span>Rp {(total * 0.1).toLocaleString('id-ID')}</span>
+                    <span>Pajak ({taxRate}%)</span>
+                    <span>Rp {getTaxAmount().toLocaleString('id-ID')}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>
                     <span className="text-green-600">
-                      Rp {(total * 1.1).toLocaleString('id-ID')}
+                      Rp {Math.round(total).toLocaleString('id-ID')}
                     </span>
                   </div>
                 </div>
