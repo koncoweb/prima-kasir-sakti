@@ -171,7 +171,7 @@ const InventoryTracker = () => {
             })}
           </div>
         </CardContent>
-      </div>
+      </Card>
     </div>
   );
 };
