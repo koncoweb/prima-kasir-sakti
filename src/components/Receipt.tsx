@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Printer } from 'lucide-react';
@@ -215,6 +215,15 @@ const Receipt: React.FC<ReceiptProps> = ({
     onPrint();
   };
 
+  // Automatically show print dialog when component mounts
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      printReceipt();
+    }, 500); // Small delay to ensure component is fully rendered
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm mx-auto">
       <div className="text-center mb-4">
@@ -234,7 +243,7 @@ const Receipt: React.FC<ReceiptProps> = ({
         size="lg"
       >
         <Printer className="h-4 w-4 mr-2" />
-        Cetak Receipt
+        Cetak Ulang Receipt
       </Button>
     </div>
   );
