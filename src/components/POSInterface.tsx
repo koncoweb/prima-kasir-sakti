@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { useProducts } from "@/hooks/useProducts";
 import { useInventory } from "@/hooks/useInventory";
 import { supabase } from "@/integrations/supabase/client";
+import Receipt from "./Receipt";
 
 interface CartItem {
   id: string;
@@ -19,6 +19,27 @@ interface CartItem {
   quantity: number;
   category?: string;
   stock?: number;
+}
+
+interface CompletedTransaction {
+  transactionNumber: string;
+  items: {
+    name: string;
+    quantity: number;
+    price: number;
+    total: number;
+  }[];
+  subtotal: number;
+  discountAmount: number;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  taxAmount: number;
+  taxRate: number;
+  total: number;
+  paymentMethod: string;
+  cashierName: string;
+  date: string;
+  time: string;
 }
 
 const POSInterface = () => {
@@ -30,6 +51,8 @@ const POSInterface = () => {
   const [total, setTotal] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [completedTransaction, setCompletedTransaction] = useState<CompletedTransaction | null>(null);
 
   const categories = ["Semua", "Minuman", "Makanan", "Snack", "Dessert"];
   const [selectedCategory, setSelectedCategory] = useState("Semua");
@@ -171,6 +194,9 @@ const POSInterface = () => {
       const discountAmount = getDiscountAmount();
       const taxAmount = getTaxAmount();
       const transactionNumber = generateTransactionNumber();
+      const now = new Date();
+      const date = now.toLocaleDateString('id-ID');
+      const time = now.toLocaleTimeString('id-ID');
       
       // Insert transaction with discount information
       const { data: transaction, error: transactionError } = await supabase
@@ -222,16 +248,36 @@ const POSInterface = () => {
         }
       }
 
+      // Prepare transaction data for receipt
+      const transactionData: CompletedTransaction = {
+        transactionNumber,
+        items: cart.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          total: item.price * item.quantity
+        })),
+        subtotal,
+        discountAmount: Math.round(discountAmount),
+        discountType,
+        discountValue,
+        taxAmount: Math.round(taxAmount),
+        taxRate,
+        total,
+        paymentMethod: 'Cash',
+        cashierName: 'Admin',
+        date,
+        time
+      };
+
+      setCompletedTransaction(transactionData);
+      setShowReceipt(true);
+
       toast({
         title: "Transaksi berhasil!",
         description: `Nomor transaksi: ${transactionNumber}`,
       });
       
-      // Reset form
-      setCart([]);
-      setSubtotal(0);
-      setTotal(0);
-      setDiscountValue(0);
     } catch (error) {
       console.error('Error processing payment:', error);
       toast({
@@ -242,6 +288,16 @@ const POSInterface = () => {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handlePrintComplete = () => {
+    // Reset form after printing
+    setCart([]);
+    setSubtotal(0);
+    setTotal(0);
+    setDiscountValue(0);
+    setShowReceipt(false);
+    setCompletedTransaction(null);
   };
 
   useEffect(() => {
