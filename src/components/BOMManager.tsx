@@ -123,10 +123,9 @@ const BOMManager = () => {
                       onValueChange={(value) => setNewBOM({...newBOM, product_id: value})}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Pilih produk" />
+                        <SelectValue placeholder="Pilih produk (opsional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Tidak ada produk</SelectItem>
                         {products.map((product) => (
                           <SelectItem key={product.id} value={product.id}>
                             {product.name}
