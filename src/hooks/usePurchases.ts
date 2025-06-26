@@ -1,29 +1,14 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 
-export interface PurchaseTransaction {
-  id: string;
-  transaction_number: string;
-  supplier_id?: string;
-  inventory_item_id?: string;
-  quantity_purchased: number;
-  unit_price: number;
-  total_amount: number;
-  purchase_date: string;
-  invoice_number?: string;
-  notes?: string;
-  created_at: string;
-  supplier?: {
-    id: string;
-    name: string;
-  };
-  inventory_item?: {
-    id: string;
-    name: string;
-    unit: string;
-  };
-}
+import { useState, useEffect } from 'react';
+import { toast } from '@/hooks/use-toast';
+import { PurchaseTransaction, CreatePurchaseData } from '@/types/purchase';
+import { 
+  fetchPurchasesFromDB, 
+  createPurchaseInDB, 
+  updatePurchaseInDB, 
+  deletePurchaseFromDB 
+} from '@/services/purchaseService';
+import { updateInventoryStock, updateSupplierItemInfo } from '@/utils/stockUtils';
 
 export const usePurchases = () => {
   const [purchases, setPurchases] = useState<PurchaseTransaction[]>([]);
@@ -32,23 +17,8 @@ export const usePurchases = () => {
   const fetchPurchases = async (inventoryItemId?: string) => {
     try {
       setLoading(true);
-      let query = supabase
-        .from('purchase_transactions')
-        .select(`
-          *,
-          supplier:suppliers(id, name),
-          inventory_item:inventory_items(id, name, unit)
-        `)
-        .order('created_at', { ascending: false });
-      
-      if (inventoryItemId) {
-        query = query.eq('inventory_item_id', inventoryItemId);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      setPurchases(data || []);
+      const data = await fetchPurchasesFromDB(inventoryItemId);
+      setPurchases(data);
     } catch (error) {
       console.error('Error fetching purchases:', error);
       toast({
@@ -61,81 +31,22 @@ export const usePurchases = () => {
     }
   };
 
-  const createPurchase = async (purchaseData: {
-    supplier_id: string;
-    inventory_item_id: string;
-    quantity_purchased: number;
-    unit_price: number;
-    invoice_number?: string;
-    notes?: string;
-  }) => {
+  const createPurchase = async (purchaseData: CreatePurchaseData) => {
     try {
-      const total_amount = purchaseData.quantity_purchased * purchaseData.unit_price;
-      
-      const { data, error } = await supabase
-        .from('purchase_transactions')
-        .insert([{
-          ...purchaseData,
-          total_amount
-        }])
-        .select(`
-          id,
-          transaction_number,
-          supplier_id,
-          inventory_item_id,
-          quantity_purchased,
-          unit_price,
-          total_amount,
-          purchase_date,
-          invoice_number,
-          notes,
-          created_at,
-          supplier:suppliers(id, name),
-          inventory_item:inventory_items(id, name, unit)
-        `)
-        .single();
-      
-      if (error) throw error;
+      const data = await createPurchaseInDB(purchaseData);
 
-      // Get current stock first, then update it
-      const { data: currentItem, error: fetchError } = await supabase
-        .from('inventory_items')
-        .select('current_stock')
-        .eq('id', purchaseData.inventory_item_id)
-        .single();
+      // Update inventory stock
+      await updateInventoryStock(
+        purchaseData.inventory_item_id, 
+        purchaseData.quantity_purchased
+      );
 
-      if (fetchError) {
-        console.error('Error fetching current stock:', fetchError);
-      } else {
-        const newStock = currentItem.current_stock + purchaseData.quantity_purchased;
-        
-        const { error: stockError } = await supabase
-          .from('inventory_items')
-          .update({ 
-            current_stock: newStock,
-            last_restock_date: new Date().toISOString().split('T')[0]
-          })
-          .eq('id', purchaseData.inventory_item_id);
-
-        if (stockError) {
-          console.error('Error updating stock:', stockError);
-          toast({
-            title: "Warning",
-            description: "Pembelian berhasil, tapi gagal update stok otomatis",
-            variant: "destructive"
-          });
-        }
-      }
-
-      // Update supplier item last purchase date
-      await supabase
-        .from('supplier_items')
-        .update({ 
-          last_purchase_date: new Date().toISOString().split('T')[0],
-          unit_price: purchaseData.unit_price
-        })
-        .eq('supplier_id', purchaseData.supplier_id)
-        .eq('inventory_item_id', purchaseData.inventory_item_id);
+      // Update supplier item info
+      await updateSupplierItemInfo(
+        purchaseData.supplier_id,
+        purchaseData.inventory_item_id,
+        purchaseData.unit_price
+      );
       
       setPurchases(prev => [data, ...prev]);
       
@@ -158,18 +69,7 @@ export const usePurchases = () => {
 
   const updatePurchase = async (id: string, updates: Partial<PurchaseTransaction>) => {
     try {
-      const { data, error } = await supabase
-        .from('purchase_transactions')
-        .update(updates)
-        .eq('id', id)
-        .select(`
-          *,
-          supplier:suppliers(id, name),
-          inventory_item:inventory_items(id, name, unit)
-        `)
-        .single();
-      
-      if (error) throw error;
+      const data = await updatePurchaseInDB(id, updates);
       
       setPurchases(prev => prev.map(purchase => 
         purchase.id === id ? data : purchase
@@ -194,12 +94,7 @@ export const usePurchases = () => {
 
   const deletePurchase = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('purchase_transactions')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
+      await deletePurchaseFromDB(id);
       
       setPurchases(prev => prev.filter(purchase => purchase.id !== id));
       
@@ -231,3 +126,6 @@ export const usePurchases = () => {
     refetch: fetchPurchases
   };
 };
+
+// Re-export types for backward compatibility
+export type { PurchaseTransaction, CreatePurchaseData };
