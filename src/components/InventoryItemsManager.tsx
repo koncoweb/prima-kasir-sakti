@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Search, Plus, Edit, Trash2, Package, Beaker, Wrench } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Search, Plus, Edit, Trash2, Package, Beaker, Wrench, TrendingUp, TrendingDown } from "lucide-react";
 import { useInventoryItems } from "@/hooks/useInventoryItems";
 
 const InventoryItemsManager = () => {
@@ -107,6 +108,14 @@ const InventoryItemsManager = () => {
     }
   };
 
+  const getItemTypeColor = (type: string) => {
+    switch (type) {
+      case 'raw_material': return 'from-emerald-500 to-teal-600';
+      case 'supply': return 'from-orange-500 to-red-600';
+      default: return 'from-blue-500 to-indigo-600';
+    }
+  };
+
   const getStockStatus = (current: number, min: number) => {
     if (current < min) return { variant: 'destructive' as const, text: 'Stok Rendah' };
     return { variant: 'secondary' as const, text: 'Normal' };
@@ -124,22 +133,30 @@ const InventoryItemsManager = () => {
 
   return (
     <div className="space-y-6">
-      <Card className="bg-white shadow-sm">
-        <CardHeader>
+      <Card className="bg-white/70 backdrop-blur-sm shadow-lg border-0 rounded-2xl overflow-hidden">
+        <CardHeader className="bg-white/80 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <CardTitle>Manajemen Inventory Items</CardTitle>
+            <div className="flex items-center space-x-3">
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-xl">
+                <Package className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-bold text-slate-800">Manajemen Inventory Items</CardTitle>
+                <p className="text-sm text-slate-500">Kelola semua item inventory Anda</p>
+              </div>
+            </div>
             <div className="flex items-center space-x-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input 
                   placeholder="Cari item..." 
-                  className="pl-10 w-64"
+                  className="pl-10 w-64 bg-white/80 backdrop-blur-sm border-slate-200"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-48 bg-white/80 backdrop-blur-sm border-slate-200">
                   <SelectValue placeholder="Filter tipe" />
                 </SelectTrigger>
                 <SelectContent>
@@ -151,12 +168,12 @@ const InventoryItemsManager = () => {
               </Select>
               <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
                 <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
                     <Plus className="h-4 w-4 mr-2" />
                     Tambah Item
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
+                <DialogContent className="sm:max-w-[500px] bg-white/90 backdrop-blur-sm">
                   <DialogHeader>
                     <DialogTitle>Tambah Inventory Item Baru</DialogTitle>
                   </DialogHeader>
@@ -248,42 +265,57 @@ const InventoryItemsManager = () => {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+        <CardContent className="p-6">
+          <div className="space-y-3">
             {filteredItems.map((item) => {
               const stockStatus = getStockStatus(item.current_stock, item.min_stock);
+              const stockTrend = item.current_stock >= item.min_stock ? 'up' : 'down';
+              
               return (
-                <div key={item.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                <div key={item.id} className="group flex items-center justify-between p-4 bg-white/60 backdrop-blur-sm border border-slate-200/60 rounded-xl hover:bg-white/80 hover:shadow-md transition-all duration-200">
                   <div className="flex items-center space-x-4">
-                    <div className="bg-gray-100 p-3 rounded-lg">
-                      {getItemTypeIcon(item.item_type)}
-                    </div>
+                    <Avatar className="h-12 w-12">
+                      <AvatarFallback className={`bg-gradient-to-br ${getItemTypeColor(item.item_type)} text-white`}>
+                        {getItemTypeIcon(item.item_type)}
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
-                      <h3 className="font-medium text-gray-900">{item.name}</h3>
-                      <p className="text-sm text-gray-500">{item.description}</p>
-                      <div className="flex space-x-2 mt-1">
-                        <Badge variant="outline">{getItemTypeLabel(item.item_type)}</Badge>
-                        <Badge variant={stockStatus.variant}>{stockStatus.text}</Badge>
+                      <h3 className="font-semibold text-slate-900 text-base">{item.name}</h3>
+                      <p className="text-sm text-slate-500">{item.description}</p>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Badge variant="outline" className="text-xs">
+                          {getItemTypeLabel(item.item_type)}
+                        </Badge>
+                        <Badge variant={stockStatus.variant} className="text-xs">
+                          {stockStatus.text}
+                        </Badge>
+                        <div className="flex items-center space-x-1 text-xs text-slate-500">
+                          {stockTrend === 'up' ? (
+                            <TrendingUp className="h-3 w-3 text-emerald-500" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3 text-red-500" />
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
                   
                   <div className="flex items-center space-x-6">
                     <div className="text-center">
-                      <p className="text-sm text-gray-500">Stok</p>
-                      <p className="font-bold text-lg">{item.current_stock} {item.unit}</p>
+                      <p className="text-sm text-slate-500 font-medium">Stok</p>
+                      <p className="font-bold text-xl text-slate-900">{item.current_stock} {item.unit}</p>
                     </div>
                     
                     <div className="text-center">
-                      <p className="text-sm text-gray-500">Harga/Unit</p>
-                      <p className="font-medium">Rp {(item.unit_cost || 0).toLocaleString('id-ID')}</p>
+                      <p className="text-sm text-slate-500 font-medium">Harga/Unit</p>
+                      <p className="font-semibold text-slate-700">Rp {(item.unit_cost || 0).toLocaleString('id-ID')}</p>
                     </div>
                     
-                    <div className="flex space-x-2">
+                    <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Input
                         type="number"
                         placeholder="Update stok"
-                        className="w-24"
+                        className="w-24 h-9 bg-white/80 backdrop-blur-sm border-slate-200"
                         id={`stock-${item.id}`}
                       />
                       <Button 
@@ -296,6 +328,7 @@ const InventoryItemsManager = () => {
                             input.value = '';
                           }
                         }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
                       >
                         Update
                       </Button>
@@ -303,6 +336,7 @@ const InventoryItemsManager = () => {
                         size="sm" 
                         variant="outline"
                         onClick={() => openEditModal(item)}
+                        className="bg-white/80 backdrop-blur-sm border-slate-200"
                       >
                         <Edit className="h-3 w-3" />
                       </Button>
@@ -312,7 +346,7 @@ const InventoryItemsManager = () => {
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent>
+                        <AlertDialogContent className="bg-white/90 backdrop-blur-sm">
                           <AlertDialogHeader>
                             <AlertDialogTitle>Hapus Item</AlertDialogTitle>
                             <AlertDialogDescription>
@@ -341,7 +375,7 @@ const InventoryItemsManager = () => {
 
       {/* Edit Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] bg-white/90 backdrop-blur-sm">
           <DialogHeader>
             <DialogTitle>Edit Inventory Item</DialogTitle>
           </DialogHeader>

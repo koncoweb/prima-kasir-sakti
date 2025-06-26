@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Package } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AlertTriangle, Package, TrendingUp, TrendingDown } from "lucide-react";
 import { useInventory } from "@/hooks/useInventory";
 
 const InventoryTracker = () => {
@@ -32,7 +33,7 @@ const InventoryTracker = () => {
     <div className="space-y-6">
       {/* Stock Alerts */}
       {lowStockItems.length > 0 && (
-        <Card className="bg-red-50 border-red-200">
+        <Card className="bg-gradient-to-r from-red-50 to-orange-50 border-red-200/60 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2 text-red-700">
               <AlertTriangle className="h-5 w-5" />
@@ -42,17 +43,24 @@ const InventoryTracker = () => {
           <CardContent>
             <div className="space-y-2">
               {lowStockItems.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-3 bg-white rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">{item.product?.name}</p>
-                    <p className="text-sm text-red-600">
-                      Stok tersisa: {item.current_stock} (Min: {item.min_stock})
-                    </p>
+                <div key={item.id} className="flex items-center justify-between p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm">
+                  <div className="flex items-center space-x-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-red-100 text-red-700">
+                        <Package className="h-5 w-5" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-semibold text-slate-900">{item.product?.name}</p>
+                      <p className="text-sm text-red-600">
+                        Stok tersisa: {item.current_stock} (Min: {item.min_stock})
+                      </p>
+                    </div>
                   </div>
                   <Button 
                     size="sm" 
                     onClick={() => handleRestock(item.id, item.min_stock)}
-                    className="bg-red-600 hover:bg-red-700"
+                    className="bg-red-600 hover:bg-red-700 text-white"
                   >
                     Restock
                   </Button>
@@ -65,90 +73,111 @@ const InventoryTracker = () => {
 
       {/* Inventory Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-white shadow-sm">
+        <Card className="bg-white/70 backdrop-blur-sm shadow-lg border-0 rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-medium text-slate-600">
               Total Item
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{inventory.length}</div>
-            <p className="text-xs text-gray-500 mt-1">Produk terdaftar</p>
+            <div className="text-2xl font-bold text-slate-900">{inventory.length}</div>
+            <p className="text-xs text-slate-500 mt-1">Produk terdaftar</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white shadow-sm">
+        <Card className="bg-white/70 backdrop-blur-sm shadow-lg border-0 rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-medium text-slate-600">
               Stok Rendah
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{lowStockItems.length}</div>
-            <p className="text-xs text-gray-500 mt-1">Perlu restock</p>
+            <p className="text-xs text-slate-500 mt-1">Perlu restock</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white shadow-sm">
+        <Card className="bg-white/70 backdrop-blur-sm shadow-lg border-0 rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-medium text-slate-600">
               Total Nilai Stok
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-emerald-600">
               Rp {inventory.reduce((total, item) => 
                 total + (item.current_stock * (item.product?.price || 0)), 0
               ).toLocaleString('id-ID')}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Estimasi nilai</p>
+            <p className="text-xs text-slate-500 mt-1">Estimasi nilai</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Inventory List */}
-      <Card className="bg-white shadow-sm">
-        <CardHeader>
-          <CardTitle>Manajemen Inventory</CardTitle>
+      {/* Modern Inventory List */}
+      <Card className="bg-white/70 backdrop-blur-sm shadow-lg border-0 rounded-2xl overflow-hidden">
+        <CardHeader className="bg-white/80 backdrop-blur-sm">
+          <div className="flex items-center space-x-3">
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-xl">
+              <Package className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-bold text-slate-800">Manajemen Inventory</CardTitle>
+              <p className="text-sm text-slate-500">Kelola stok produk Anda</p>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+        <CardContent className="p-6">
+          <div className="space-y-3">
             {inventory.map((item) => {
               const stockStatus = getStockStatus(item.current_stock, item.min_stock, item.max_stock);
+              const stockTrend = item.current_stock >= item.min_stock ? 'up' : 'down';
+              
               return (
-                <div key={item.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                <div key={item.id} className="group flex items-center justify-between p-4 bg-white/60 backdrop-blur-sm border border-slate-200/60 rounded-xl hover:bg-white/80 hover:shadow-md transition-all duration-200">
                   <div className="flex items-center space-x-4">
-                    <div className="bg-gray-100 p-3 rounded-lg">
-                      <Package className="h-6 w-6 text-gray-600" />
-                    </div>
+                    <Avatar className="h-12 w-12">
+                      <AvatarFallback className="bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700">
+                        <Package className="h-6 w-6" />
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
-                      <h3 className="font-medium text-gray-900">{item.product?.name}</h3>
-                      <p className="text-sm text-gray-500">
+                      <h3 className="font-semibold text-slate-900 text-base">{item.product?.name}</h3>
+                      <p className="text-sm text-slate-500">
                         Terakhir restock: {item.last_restock_date || 'Belum ada'}
                       </p>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Badge variant={stockStatus.variant} className="text-xs">
+                          {stockStatus.text}
+                        </Badge>
+                        <div className="flex items-center space-x-1 text-xs text-slate-500">
+                          {stockTrend === 'up' ? (
+                            <TrendingUp className="h-3 w-3 text-emerald-500" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3 text-red-500" />
+                          )}
+                          <span>Trend</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
                   <div className="flex items-center space-x-6">
                     <div className="text-center">
-                      <p className="text-sm text-gray-500">Stok Saat Ini</p>
-                      <p className="font-bold text-lg">{item.current_stock}</p>
+                      <p className="text-sm text-slate-500 font-medium">Stok Saat Ini</p>
+                      <p className="font-bold text-xl text-slate-900">{item.current_stock}</p>
                     </div>
                     
                     <div className="text-center">
-                      <p className="text-sm text-gray-500">Min/Max</p>
-                      <p className="font-medium">{item.min_stock}/{item.max_stock}</p>
+                      <p className="text-sm text-slate-500 font-medium">Min/Max</p>
+                      <p className="font-semibold text-slate-700">{item.min_stock}/{item.max_stock}</p>
                     </div>
                     
-                    <Badge variant={stockStatus.variant}>
-                      {stockStatus.text}
-                    </Badge>
-                    
-                    <div className="flex space-x-2">
+                    <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Input
                         type="number"
-                        placeholder="Jumlah"
-                        className="w-20"
+                        placeholder="Qty"
+                        className="w-20 h-9 bg-white/80 backdrop-blur-sm border-slate-200"
                         id={`restock-${item.id}`}
                       />
                       <Button 
@@ -161,6 +190,7 @@ const InventoryTracker = () => {
                             input.value = '';
                           }
                         }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
                       >
                         Restock
                       </Button>
