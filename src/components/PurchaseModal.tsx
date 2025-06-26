@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +21,7 @@ interface PurchaseModalProps {
 
 const PurchaseModal = ({ item, isOpen, onClose, onStockUpdated }: PurchaseModalProps) => {
   const { suppliers, addSupplier, getSupplierItems, addSupplierItem } = useSuppliers();
-  const { createPurchase, purchases, refetch: refetchPurchases } = usePurchases();
+  const { createPurchase, purchases, refetch: refetchPurchases, creating } = usePurchases();
   
   const [supplierItems, setSupplierItems] = useState<SupplierItem[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<string>("");
@@ -56,6 +55,7 @@ const PurchaseModal = ({ item, isOpen, onClose, onStockUpdated }: PurchaseModalP
 
   useEffect(() => {
     if (item && isOpen) {
+      console.log('Modal opened for item:', item);
       loadSupplierItems();
       refetchPurchases(item.id);
       resetForms();
@@ -64,8 +64,14 @@ const PurchaseModal = ({ item, isOpen, onClose, onStockUpdated }: PurchaseModalP
 
   const loadSupplierItems = async () => {
     if (!item) return;
-    const items = await getSupplierItems(item.id);
-    setSupplierItems(items);
+    try {
+      console.log('Loading supplier items for item:', item.id);
+      const items = await getSupplierItems(item.id);
+      console.log('Loaded supplier items:', items);
+      setSupplierItems(items);
+    } catch (error) {
+      console.error('Error loading supplier items:', error);
+    }
   };
 
   const resetForms = () => {
@@ -94,9 +100,13 @@ const PurchaseModal = ({ item, isOpen, onClose, onStockUpdated }: PurchaseModalP
   };
 
   const handleAddSupplier = async () => {
-    if (!newSupplier.name) return;
+    if (!newSupplier.name.trim()) {
+      console.log('Supplier name is required');
+      return;
+    }
 
     try {
+      console.log('Adding new supplier:', newSupplier);
       await addSupplier({
         ...newSupplier,
         is_active: true
@@ -118,9 +128,13 @@ const PurchaseModal = ({ item, isOpen, onClose, onStockUpdated }: PurchaseModalP
   };
 
   const handleAddSupplierItem = async () => {
-    if (!item || !newSupplierItem.supplier_id || newSupplierItem.unit_price <= 0) return;
+    if (!item || !newSupplierItem.supplier_id || newSupplierItem.unit_price <= 0) {
+      console.log('Invalid supplier item data');
+      return;
+    }
 
     try {
+      console.log('Adding supplier item:', newSupplierItem);
       await addSupplierItem({
         supplier_id: newSupplierItem.supplier_id,
         inventory_item_id: item.id,
@@ -147,9 +161,26 @@ const PurchaseModal = ({ item, isOpen, onClose, onStockUpdated }: PurchaseModalP
   };
 
   const handleCreatePurchase = async () => {
-    if (!item || !selectedSupplier || purchaseData.quantity <= 0 || purchaseData.unit_price <= 0) return;
+    if (!item || !selectedSupplier || purchaseData.quantity <= 0 || purchaseData.unit_price <= 0) {
+      console.log('Invalid purchase data:', { item, selectedSupplier, purchaseData });
+      return;
+    }
+
+    if (creating) {
+      console.log('Already creating purchase, please wait...');
+      return;
+    }
 
     try {
+      console.log('Creating purchase with data:', {
+        supplier_id: selectedSupplier,
+        inventory_item_id: item.id,
+        quantity_purchased: purchaseData.quantity,
+        unit_price: purchaseData.unit_price,
+        invoice_number: purchaseData.invoice_number || undefined,
+        notes: purchaseData.notes || undefined
+      });
+
       await createPurchase({
         supplier_id: selectedSupplier,
         inventory_item_id: item.id,
@@ -282,10 +313,10 @@ const PurchaseModal = ({ item, isOpen, onClose, onStockUpdated }: PurchaseModalP
                 <Button 
                   onClick={handleCreatePurchase} 
                   className="w-full bg-green-600 hover:bg-green-700"
-                  disabled={!selectedSupplier || purchaseData.quantity <= 0 || purchaseData.unit_price <= 0}
+                  disabled={!selectedSupplier || purchaseData.quantity <= 0 || purchaseData.unit_price <= 0 || creating}
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" />
-                  Catat Pembelian & Update Stok
+                  {creating ? 'Memproses...' : 'Catat Pembelian & Update Stok'}
                 </Button>
               </CardContent>
             </Card>
@@ -458,7 +489,7 @@ const PurchaseModal = ({ item, isOpen, onClose, onStockUpdated }: PurchaseModalP
                 <Button 
                   onClick={handleAddSupplier} 
                   className="w-full bg-blue-600 hover:bg-blue-700"
-                  disabled={!newSupplier.name}
+                  disabled={!newSupplier.name.trim()}
                 >
                   <Building className="h-4 w-4 mr-2" />
                   Tambah Supplier

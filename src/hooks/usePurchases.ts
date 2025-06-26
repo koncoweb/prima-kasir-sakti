@@ -13,11 +13,14 @@ import { updateInventoryStock, updateSupplierItemInfo } from '@/utils/stockUtils
 export const usePurchases = () => {
   const [purchases, setPurchases] = useState<PurchaseTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
 
   const fetchPurchases = async (inventoryItemId?: string) => {
     try {
       setLoading(true);
+      console.log('Fetching purchases for item:', inventoryItemId);
       const data = await fetchPurchasesFromDB(inventoryItemId);
+      console.log('Fetched purchases:', data);
       setPurchases(data);
     } catch (error) {
       console.error('Error fetching purchases:', error);
@@ -32,47 +35,92 @@ export const usePurchases = () => {
   };
 
   const createPurchase = async (purchaseData: CreatePurchaseData) => {
+    if (creating) {
+      console.log('Purchase creation already in progress, skipping...');
+      return;
+    }
+
     try {
-      const data = await createPurchaseInDB(purchaseData);
+      setCreating(true);
+      console.log('Creating purchase with data:', purchaseData);
+
+      // Validate required data
+      if (!purchaseData.supplier_id || !purchaseData.inventory_item_id) {
+        throw new Error('Supplier dan item inventory harus dipilih');
+      }
+
+      if (purchaseData.quantity_purchased <= 0 || purchaseData.unit_price <= 0) {
+        throw new Error('Kuantitas dan harga harus lebih dari 0');
+      }
+
+      // Create purchase transaction
+      console.log('Creating purchase transaction...');
+      const newPurchase = await createPurchaseInDB(purchaseData);
+      console.log('Purchase created successfully:', newPurchase);
 
       // Update inventory stock
-      await updateInventoryStock(
+      console.log('Updating inventory stock...');
+      const stockResult = await updateInventoryStock(
         purchaseData.inventory_item_id, 
         purchaseData.quantity_purchased
       );
 
+      if (!stockResult.success) {
+        console.error('Failed to update stock:', stockResult.error);
+        toast({
+          title: "Warning",
+          description: `Pembelian berhasil dicatat, tapi gagal update stok: ${stockResult.error}`,
+          variant: "destructive"
+        });
+      } else {
+        console.log('Stock updated successfully');
+      }
+
       // Update supplier item info
-      await updateSupplierItemInfo(
+      console.log('Updating supplier item info...');
+      const supplierResult = await updateSupplierItemInfo(
         purchaseData.supplier_id,
         purchaseData.inventory_item_id,
         purchaseData.unit_price
       );
+
+      if (!supplierResult.success) {
+        console.error('Failed to update supplier item:', supplierResult.error);
+        // This is not critical, so just log it
+      } else {
+        console.log('Supplier item info updated successfully');
+      }
       
-      setPurchases(prev => [data, ...prev]);
+      // Update local state
+      setPurchases(prev => [newPurchase, ...prev]);
       
       toast({
         title: "Pembelian berhasil dicatat",
-        description: `Pembelian ${data.inventory_item?.name} sebanyak ${purchaseData.quantity_purchased} telah dicatat dan stok diperbarui`,
+        description: `Pembelian ${newPurchase.inventory_item?.name} sebanyak ${purchaseData.quantity_purchased} telah dicatat${stockResult.success ? ' dan stok diperbarui' : ''}`,
       });
       
-      return data;
+      return newPurchase;
     } catch (error) {
       console.error('Error creating purchase:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Gagal mencatat pembelian';
       toast({
         title: "Error",
-        description: "Gagal mencatat pembelian",
+        description: errorMessage,
         variant: "destructive"
       });
       throw error;
+    } finally {
+      setCreating(false);
     }
   };
 
   const updatePurchase = async (id: string, updates: Partial<PurchaseTransaction>) => {
     try {
-      const data = await updatePurchaseInDB(id, updates);
+      console.log('Updating purchase:', id, updates);
+      const updatedPurchase = await updatePurchaseInDB(id, updates);
       
       setPurchases(prev => prev.map(purchase => 
-        purchase.id === id ? data : purchase
+        purchase.id === id ? updatedPurchase : purchase
       ));
       
       toast({
@@ -80,7 +128,7 @@ export const usePurchases = () => {
         description: "Data pembelian telah diperbarui",
       });
       
-      return data;
+      return updatedPurchase;
     } catch (error) {
       console.error('Error updating purchase:', error);
       toast({
@@ -94,6 +142,7 @@ export const usePurchases = () => {
 
   const deletePurchase = async (id: string) => {
     try {
+      console.log('Deleting purchase:', id);
       await deletePurchaseFromDB(id);
       
       setPurchases(prev => prev.filter(purchase => purchase.id !== id));
@@ -120,6 +169,7 @@ export const usePurchases = () => {
   return {
     purchases,
     loading,
+    creating,
     createPurchase,
     updatePurchase,
     deletePurchase,
