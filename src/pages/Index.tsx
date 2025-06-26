@@ -54,7 +54,7 @@ const Index = () => {
                 />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Sistem POS</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Darling Pos</h1>
                 <p className="text-gray-600">Point of Sale & Inventory Management</p>
               </div>
             </div>
