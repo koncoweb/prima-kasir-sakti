@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Plus, PlayCircle, CheckCircle, XCircle, Package, Clock } from 'lucide-react';
 import { useProductionOrders } from '@/hooks/useProductionOrders';
 import { useBillOfMaterials } from '@/hooks/useBillOfMaterials';
+import { consumeProductionMaterials, showInsufficientStockWarning } from '@/utils/productionUtils';
 import { toast } from '@/hooks/use-toast';
 
 const ProductionManager = () => {
@@ -19,6 +19,7 @@ const ProductionManager = () => {
   const [quantity, setQuantity] = useState(1);
   const [plannedDate, setPlannedDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [processingOrders, setProcessingOrders] = useState<Set<string>>(new Set());
 
   const handleCreateOrder = async () => {
     if (!selectedBomId) {
@@ -52,18 +53,66 @@ const ProductionManager = () => {
   };
 
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
+    if (processingOrders.has(orderId)) {
+      return; // Prevent double processing
+    }
+
     try {
+      setProcessingOrders(prev => new Set(prev).add(orderId));
+      
       const updates: any = { status: newStatus };
       
       if (newStatus === 'in_progress') {
         updates.started_at = new Date().toISOString();
       } else if (newStatus === 'completed') {
         updates.completed_at = new Date().toISOString();
+        
+        // Find the production order to get BOM and quantity info
+        const productionOrder = productionOrders.find(order => order.id === orderId);
+        
+        if (productionOrder && productionOrder.bom_id) {
+          console.log('Processing material consumption for completed production order');
+          
+          // Consume materials from inventory
+          const consumptionResult = await consumeProductionMaterials(
+            productionOrder.bom_id,
+            productionOrder.quantity_to_produce
+          );
+          
+          if (!consumptionResult.success) {
+            if (consumptionResult.insufficientStock) {
+              showInsufficientStockWarning(consumptionResult.insufficientStock);
+            } else {
+              toast({
+                title: "Error",
+                description: consumptionResult.error || "Gagal mengkonsumsi material",
+                variant: "destructive"
+              });
+            }
+            return; // Don't update status if material consumption failed
+          }
+          
+          toast({
+            title: "Produksi Selesai",
+            description: `Production order ${productionOrder.order_number} selesai dan material telah dikonsumsi dari inventory`,
+          });
+        }
       }
 
       await updateProductionOrder(orderId, updates);
     } catch (error) {
       console.error('Error updating production order:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memperbarui status production order",
+        variant: "destructive"
+      });
+    } finally {
+      setProcessingOrders(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(orderId);
+        return newSet;
+      });
     }
   };
 
@@ -229,9 +278,10 @@ const ProductionManager = () => {
                     size="sm"
                     onClick={() => handleStatusUpdate(order.id, 'in_progress')}
                     className="bg-yellow-600 hover:bg-yellow-700 flex-1"
+                    disabled={processingOrders.has(order.id)}
                   >
                     <PlayCircle className="h-3 w-3 mr-1" />
-                    Start
+                    {processingOrders.has(order.id) ? 'Processing...' : 'Start'}
                   </Button>
                 )}
                 {order.status === 'in_progress' && (
@@ -239,9 +289,10 @@ const ProductionManager = () => {
                     size="sm"
                     onClick={() => handleStatusUpdate(order.id, 'completed')}
                     className="bg-green-600 hover:bg-green-700 flex-1"
+                    disabled={processingOrders.has(order.id)}
                   >
                     <CheckCircle className="h-3 w-3 mr-1" />
-                    Complete
+                    {processingOrders.has(order.id) ? 'Processing...' : 'Complete'}
                   </Button>
                 )}
                 {(order.status === 'planned' || order.status === 'in_progress') && (
@@ -250,6 +301,7 @@ const ProductionManager = () => {
                     variant="destructive"
                     onClick={() => handleStatusUpdate(order.id, 'cancelled')}
                     className="flex-1"
+                    disabled={processingOrders.has(order.id)}
                   >
                     <XCircle className="h-3 w-3 mr-1" />
                     Cancel
