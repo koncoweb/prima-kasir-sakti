@@ -38,6 +38,16 @@ const InventoryItemsManager = () => {
   const handleAddItem = async () => {
     if (!newItem.name) return;
 
+    // Prevent adding product-type items here
+    if (newItem.item_type === 'product') {
+      toast({
+        title: "Perhatian",
+        description: "Item dengan tipe 'Produk' harus dibuat melalui Product Manager untuk integrasi yang lebih baik.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       await addInventoryItem({
         ...newItem,
@@ -130,11 +140,14 @@ const InventoryItemsManager = () => {
     return { variant: 'secondary' as const, text: 'Normal' };
   };
 
-  const filteredItems = inventoryItems.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === "all" || item.item_type === filterType;
-    return matchesSearch && matchesType;
-  });
+  // Filter out product-type items from display
+  const filteredItems = inventoryItems
+    .filter(item => item.item_type !== 'product') // Exclude product-type items
+    .filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = filterType === "all" || item.item_type === filterType;
+      return matchesSearch && matchesType;
+    });
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
@@ -151,7 +164,10 @@ const InventoryItemsManager = () => {
               </div>
               <div>
                 <CardTitle className="text-xl font-bold text-slate-800">Manajemen Inventory Items</CardTitle>
-                <p className="text-sm text-slate-500">Kelola semua item inventory Anda</p>
+                <p className="text-sm text-slate-500">Kelola bahan baku dan perlengkapan</p>
+                <p className="text-xs text-blue-600 mt-1">
+                  *Produk dikelola melalui Product Manager untuk integrasi penuh
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -172,7 +188,6 @@ const InventoryItemsManager = () => {
                   <SelectItem value="all">Semua Tipe</SelectItem>
                   <SelectItem value="raw_material">Bahan Baku</SelectItem>
                   <SelectItem value="supply">Perlengkapan</SelectItem>
-                  <SelectItem value="product">Produk</SelectItem>
                 </SelectContent>
               </Select>
               <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
@@ -418,7 +433,6 @@ const InventoryItemsManager = () => {
                     <SelectContent>
                       <SelectItem value="raw_material">Bahan Baku</SelectItem>
                       <SelectItem value="supply">Perlengkapan</SelectItem>
-                      <SelectItem value="product">Produk</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

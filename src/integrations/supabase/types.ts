@@ -312,6 +312,7 @@ export type Database = {
           created_at: string | null
           id: string
           image_url: string | null
+          inventory_item_id: string | null
           is_active: boolean | null
           name: string
           price: number
@@ -322,6 +323,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           image_url?: string | null
+          inventory_item_id?: string | null
           is_active?: boolean | null
           name: string
           price: number
@@ -332,6 +334,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           image_url?: string | null
+          inventory_item_id?: string | null
           is_active?: boolean | null
           name?: string
           price?: number
@@ -343,6 +346,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
             referencedColumns: ["id"]
           },
         ]
