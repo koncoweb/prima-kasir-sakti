@@ -5,11 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
-import { Category } from "@/hooks/useProducts";
+import { Category, Product } from "@/hooks/useProducts";
 
 interface AddProductModalProps {
   categories: Category[];
-  onAddProduct: (product: { name: string; price: number; category_id: string; is_active: boolean }) => Promise<void>;
+  onAddProduct: (product: { name: string; price: number; category_id: string; is_active: boolean }) => Promise<Product>;
 }
 
 const AddProductModal = ({ categories, onAddProduct }: AddProductModalProps) => {
