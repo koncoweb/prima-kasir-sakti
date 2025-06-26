@@ -9,7 +9,7 @@ import { toast } from "@/hooks/use-toast";
 interface InventoryItemFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (itemData: any) => Promise<void>;
+  onSubmit: (itemData: any) => Promise<any>;
 }
 
 const InventoryItemForm = ({ isOpen, onClose, onSubmit }: InventoryItemFormProps) => {
