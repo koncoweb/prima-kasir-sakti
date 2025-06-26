@@ -404,37 +404,73 @@ const POSInterface = () => {
           </CardContent>
         </Card>
 
-        {/* Product Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {/* Product Grid - Improved Design */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
           {filteredProducts.map((product) => (
-            <Card 
-              key={product.id} 
-              className="bg-white shadow-sm hover:shadow-md cursor-pointer transition-shadow"
+            <div
+              key={product.id}
               onClick={() => addToCart(product)}
+              className="bg-white rounded-xl shadow-sm hover:shadow-lg border border-gray-100 cursor-pointer transition-all duration-200 hover:scale-105 hover:border-blue-200 group"
             >
-              <CardContent className="p-4">
-                <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
-                  <Package className="h-12 w-12 text-gray-400" />
+              {/* Product Image */}
+              <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 rounded-t-xl overflow-hidden">
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Package className="h-8 w-8 text-gray-400 group-hover:text-blue-500 transition-colors" />
                 </div>
-                <h3 className="font-medium text-sm mb-2 line-clamp-2">{product.name}</h3>
-                <p className="text-blue-600 font-bold text-lg">
-                  Rp {product.price.toLocaleString('id-ID')}
-                </p>
-                <Badge variant="secondary" className="mt-2 text-xs">
-                  Stok: {product.stock}
-                </Badge>
-                <div className="mt-2 p-1 bg-gray-50 rounded text-xs text-center font-mono border">
-                  {product.id.slice(0, 8)}...
+                
+                {/* Stock badge */}
+                <div className="absolute top-2 right-2">
+                  <Badge 
+                    variant={product.stock > 10 ? "secondary" : product.stock > 0 ? "outline" : "destructive"}
+                    className="text-xs font-medium px-2 py-1"
+                  >
+                    {product.stock}
+                  </Badge>
                 </div>
-              </CardContent>
-            </Card>
+
+                {/* Quick add button */}
+                <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="bg-blue-600 text-white rounded-full p-1.5 shadow-lg">
+                    <Plus className="h-3 w-3" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Info */}
+              <div className="p-3">
+                <h3 className="font-medium text-sm text-gray-900 line-clamp-2 mb-2 leading-tight">
+                  {product.name}
+                </h3>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-blue-600 font-bold text-base">
+                      Rp {product.price.toLocaleString('id-ID')}
+                    </span>
+                    {product.category && (
+                      <span className="text-xs text-gray-500 capitalize">
+                        {product.category.name}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Product ID */}
+                <div className="mt-2 text-xs text-gray-400 font-mono bg-gray-50 px-2 py-1 rounded text-center truncate">
+                  #{product.id.slice(0, 8)}
+                </div>
+              </div>
+            </div>
           ))}
         </div>
 
         {filteredProducts.length === 0 && (
-          <div className="text-center py-8">
-            <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">Tidak ada produk yang tersedia</p>
+          <div className="text-center py-12">
+            <div className="bg-gray-100 rounded-full p-6 w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+              <Package className="h-12 w-12 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Tidak ada produk</h3>
+            <p className="text-gray-500">Tidak ada produk yang sesuai dengan pencarian Anda</p>
           </div>
         )}
       </div>
