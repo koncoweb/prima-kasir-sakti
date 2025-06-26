@@ -361,41 +361,41 @@ const POSInterface = () => {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Memuat data produk...</p>
+          <p className="text-sm">Memuat data produk...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Product Selection */}
-      <div className="lg:col-span-2 space-y-6">
+      <div className="lg:col-span-2 space-y-4">
         {/* Search and Categories */}
         <Card className="bg-white shadow-sm">
-          <CardHeader>
+          <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle>Pilih Produk</CardTitle>
+              <CardTitle className="text-lg">Pilih Produk</CardTitle>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
                 <Input 
-                  placeholder="Cari produk atau barcode..." 
-                  className="pl-10 w-64"
+                  placeholder="Cari produk..." 
+                  className="pl-8 w-48 h-8 text-sm"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="flex space-x-2 mb-4">
+          <CardContent className="pt-2">
+            <div className="flex space-x-1 mb-2">
               {categories.map((category) => (
                 <Button
                   key={category}
                   variant={selectedCategory === category ? "default" : "outline"}
                   size="sm"
                   onClick={() => setSelectedCategory(category)}
-                  className={selectedCategory === category ? "bg-blue-600 hover:bg-blue-700" : ""}
+                  className={`text-xs px-2 py-1 h-7 ${selectedCategory === category ? "bg-blue-600 hover:bg-blue-700" : ""}`}
                 >
                   {category}
                 </Button>
@@ -404,47 +404,47 @@ const POSInterface = () => {
           </CardContent>
         </Card>
 
-        {/* Product Grid - Improved Design */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+        {/* Product Grid - More Compact */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
           {filteredProducts.map((product) => (
             <div
               key={product.id}
               onClick={() => addToCart(product)}
-              className="bg-white rounded-xl shadow-sm hover:shadow-lg border border-gray-100 cursor-pointer transition-all duration-200 hover:scale-105 hover:border-blue-200 group"
+              className="bg-white rounded-lg shadow-sm hover:shadow-md border border-gray-100 cursor-pointer transition-all duration-200 hover:scale-105 hover:border-blue-200 group"
             >
               {/* Product Image */}
-              <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 rounded-t-xl overflow-hidden">
+              <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 rounded-t-lg overflow-hidden">
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Package className="h-8 w-8 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                  <Package className="h-6 w-6 text-gray-400 group-hover:text-blue-500 transition-colors" />
                 </div>
                 
                 {/* Stock badge */}
-                <div className="absolute top-2 right-2">
+                <div className="absolute top-1 right-1">
                   <Badge 
                     variant={product.stock > 10 ? "secondary" : product.stock > 0 ? "outline" : "destructive"}
-                    className="text-xs font-medium px-2 py-1"
+                    className="text-xs font-medium px-1 py-0 h-4"
                   >
                     {product.stock}
                   </Badge>
                 </div>
 
                 {/* Quick add button */}
-                <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="bg-blue-600 text-white rounded-full p-1.5 shadow-lg">
-                    <Plus className="h-3 w-3" />
+                <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="bg-blue-600 text-white rounded-full p-1 shadow-lg">
+                    <Plus className="h-2 w-2" />
                   </div>
                 </div>
               </div>
 
               {/* Product Info */}
-              <div className="p-3">
-                <h3 className="font-medium text-sm text-gray-900 line-clamp-2 mb-2 leading-tight">
+              <div className="p-2">
+                <h3 className="font-medium text-xs text-gray-900 line-clamp-2 mb-1 leading-tight">
                   {product.name}
                 </h3>
                 
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
-                    <span className="text-blue-600 font-bold text-base">
+                    <span className="text-blue-600 font-bold text-sm">
                       Rp {product.price.toLocaleString('id-ID')}
                     </span>
                     {product.category && (
@@ -456,7 +456,7 @@ const POSInterface = () => {
                 </div>
 
                 {/* Product ID */}
-                <div className="mt-2 text-xs text-gray-400 font-mono bg-gray-50 px-2 py-1 rounded text-center truncate">
+                <div className="mt-1 text-xs text-gray-400 font-mono bg-gray-50 px-1 py-0.5 rounded text-center truncate">
                   #{product.id.slice(0, 8)}
                 </div>
               </div>
@@ -465,43 +465,43 @@ const POSInterface = () => {
         </div>
 
         {filteredProducts.length === 0 && (
-          <div className="text-center py-12">
-            <div className="bg-gray-100 rounded-full p-6 w-24 h-24 mx-auto mb-4 flex items-center justify-center">
-              <Package className="h-12 w-12 text-gray-400" />
+          <div className="text-center py-8">
+            <div className="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-2 flex items-center justify-center">
+              <Package className="h-8 w-8 text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Tidak ada produk</h3>
-            <p className="text-gray-500">Tidak ada produk yang sesuai dengan pencarian Anda</p>
+            <h3 className="text-base font-medium text-gray-900 mb-1">Tidak ada produk</h3>
+            <p className="text-gray-500 text-sm">Tidak ada produk yang sesuai dengan pencarian Anda</p>
           </div>
         )}
       </div>
 
       {/* Cart and Checkout */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Card className="bg-white shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <ShoppingCart className="h-5 w-5" />
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center space-x-2 text-lg">
+              <ShoppingCart className="h-4 w-4" />
               <span>Keranjang ({cart.length})</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 pt-2">
             {cart.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">Keranjang masih kosong</p>
+              <p className="text-gray-500 text-center py-6 text-sm">Keranjang masih kosong</p>
             ) : (
               <>
-                <div className="space-y-3 max-h-64 overflow-y-auto">
+                <div className="space-y-2 max-h-48 overflow-y-auto">
                   {cart.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
                       <div className="flex-1">
-                        <h4 className="font-medium text-sm">{item.name}</h4>
-                        <p className="text-blue-600 font-semibold">
+                        <h4 className="font-medium text-xs">{item.name}</h4>
+                        <p className="text-blue-600 font-semibold text-sm">
                           Rp {item.price.toLocaleString('id-ID')}
                         </p>
                         <p className="text-xs text-gray-500 font-mono">
                           {item.id.slice(0, 8)}...
                         </p>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1">
                         <Button 
                           size="sm" 
                           variant="outline"
@@ -509,10 +509,11 @@ const POSInterface = () => {
                             e.stopPropagation();
                             updateQuantity(item.id, item.quantity - 1);
                           }}
+                          className="h-6 w-6 p-0 text-xs"
                         >
                           -
                         </Button>
-                        <span className="w-8 text-center">{item.quantity}</span>
+                        <span className="w-6 text-center text-xs">{item.quantity}</span>
                         <Button 
                           size="sm" 
                           variant="outline"
@@ -520,6 +521,7 @@ const POSInterface = () => {
                             e.stopPropagation();
                             updateQuantity(item.id, item.quantity + 1);
                           }}
+                          className="h-6 w-6 p-0 text-xs"
                         >
                           +
                         </Button>
@@ -530,8 +532,9 @@ const POSInterface = () => {
                             e.stopPropagation();
                             removeFromCart(item.id);
                           }}
+                          className="h-6 w-6 p-0"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-2 w-2" />
                         </Button>
                       </div>
                     </div>
@@ -541,12 +544,12 @@ const POSInterface = () => {
                 <Separator />
                 
                 {/* Tax and Discount Controls */}
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label htmlFor="tax-rate">Pajak (%)</Label>
+                      <Label htmlFor="tax-rate" className="text-xs">Pajak (%)</Label>
                       <div className="relative">
-                        <Calculator className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Calculator className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
                         <Input
                           id="tax-rate"
                           type="number"
@@ -554,18 +557,18 @@ const POSInterface = () => {
                           max="100"
                           value={taxRate}
                           onChange={(e) => setTaxRate(Number(e.target.value))}
-                          className="pl-10"
+                          className="pl-7 h-8 text-xs"
                         />
                       </div>
                     </div>
                     
                     <div>
-                      <Label htmlFor="discount-type">Tipe Diskon</Label>
+                      <Label htmlFor="discount-type" className="text-xs">Tipe Diskon</Label>
                       <select
                         id="discount-type"
                         value={discountType}
                         onChange={(e) => setDiscountType(e.target.value as 'percentage' | 'fixed')}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs h-8"
                       >
                         <option value="percentage">Persen (%)</option>
                         <option value="fixed">Nominal (Rp)</option>
@@ -574,11 +577,11 @@ const POSInterface = () => {
                   </div>
                   
                   <div>
-                    <Label htmlFor="discount-value">
+                    <Label htmlFor="discount-value" className="text-xs">
                       Diskon {discountType === 'percentage' ? '(%)' : '(Rp)'}
                     </Label>
                     <div className="relative">
-                      <Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Percent className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
                       <Input
                         id="discount-value"
                         type="number"
@@ -586,7 +589,7 @@ const POSInterface = () => {
                         max={discountType === 'percentage' ? 100 : subtotal}
                         value={discountValue}
                         onChange={(e) => setDiscountValue(Number(e.target.value))}
-                        className="pl-10"
+                        className="pl-7 h-8 text-xs"
                       />
                     </div>
                   </div>
@@ -595,25 +598,25 @@ const POSInterface = () => {
                 <Separator />
                 
                 {/* Price Breakdown */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs">
                     <span>Subtotal</span>
                     <span>Rp {subtotal.toLocaleString('id-ID')}</span>
                   </div>
                   {getDiscountAmount() > 0 && (
-                    <div className="flex justify-between text-sm text-red-600">
+                    <div className="flex justify-between text-xs text-red-600">
                       <span>
                         Diskon {discountType === 'percentage' ? `(${discountValue}%)` : ''}
                       </span>
                       <span>-Rp {getDiscountAmount().toLocaleString('id-ID')}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs">
                     <span>Pajak ({taxRate}%)</span>
                     <span>Rp {getTaxAmount().toLocaleString('id-ID')}</span>
                   </div>
                   <Separator />
-                  <div className="flex justify-between font-bold text-lg">
+                  <div className="flex justify-between font-bold text-base">
                     <span>Total</span>
                     <span className="text-green-600">
                       Rp {Math.round(total).toLocaleString('id-ID')}
@@ -624,25 +627,25 @@ const POSInterface = () => {
                 <Separator />
                 
                 {/* Payment Section */}
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div>
-                    <Label htmlFor="payment-amount">Uang Dari Pelanggan (Rp)</Label>
+                    <Label htmlFor="payment-amount" className="text-xs">Uang Dari Pelanggan (Rp)</Label>
                     <div className="relative">
-                      <Banknote className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Banknote className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
                       <Input
                         id="payment-amount"
                         type="number"
                         min="0"
                         value={paymentAmount}
                         onChange={(e) => setPaymentAmount(Number(e.target.value))}
-                        className="pl-10"
+                        className="pl-7 h-8 text-xs"
                         placeholder="Masukkan nominal uang"
                       />
                     </div>
                   </div>
                   
                   {paymentAmount > 0 && (
-                    <div className="flex justify-between text-lg font-semibold">
+                    <div className="flex justify-between text-base font-semibold">
                       <span>Kembalian</span>
                       <span className={changeAmount >= 0 ? "text-blue-600" : "text-red-600"}>
                         Rp {changeAmount.toLocaleString('id-ID')}
@@ -654,7 +657,7 @@ const POSInterface = () => {
                 <Button 
                   onClick={processPayment}
                   disabled={isProcessing || paymentAmount < total}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white h-10"
                   size="lg"
                 >
                   {isProcessing ? "Memproses..." : "Bayar Sekarang"}
