@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -80,7 +79,17 @@ export const usePurchases = () => {
           total_amount
         }])
         .select(`
-          *,
+          id,
+          transaction_number,
+          supplier_id,
+          inventory_item_id,
+          quantity_purchased,
+          unit_price,
+          total_amount,
+          purchase_date,
+          invoice_number,
+          notes,
+          created_at,
           supplier:suppliers(id, name),
           inventory_item:inventory_items(id, name, unit)
         `)
