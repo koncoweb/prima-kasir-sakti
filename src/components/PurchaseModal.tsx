@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,7 +111,7 @@ const PurchaseModal = ({ item, isOpen, onClose, onStockUpdated }: PurchaseModalP
         notes: ""
       });
       
-      setActiveTab("purchase");
+      setActiveTab("suppliers");
     } catch (error) {
       console.error('Error adding supplier:', error);
     }
@@ -168,6 +169,12 @@ const PurchaseModal = ({ item, isOpen, onClose, onStockUpdated }: PurchaseModalP
 
   const getPreferredSupplierItem = () => {
     return supplierItems.find(si => si.is_preferred) || supplierItems[0];
+  };
+
+  // Get suppliers that are not yet linked to this item
+  const getAvailableSuppliers = () => {
+    const linkedSupplierIds = supplierItems.map(si => si.supplier_id);
+    return suppliers.filter(s => !linkedSupplierIds.includes(s.id));
   };
 
   if (!item) return null;
@@ -332,7 +339,7 @@ const PurchaseModal = ({ item, isOpen, onClose, onStockUpdated }: PurchaseModalP
                   )}
                 </div>
                 
-                {supplierItems.length > 0 && (
+                {getAvailableSuppliers().length > 0 && (
                   <div className="mt-4 pt-4 border-t">
                     <h4 className="font-medium mb-3">Tambah Supplier Baru untuk Item Ini</h4>
                     <div className="grid grid-cols-2 gap-4">
@@ -344,7 +351,7 @@ const PurchaseModal = ({ item, isOpen, onClose, onStockUpdated }: PurchaseModalP
                           <SelectValue placeholder="Pilih supplier" />
                         </SelectTrigger>
                         <SelectContent>
-                          {suppliers.filter(s => !supplierItems.some(si => si.supplier_id === s.id)).map((supplier) => (
+                          {getAvailableSuppliers().map((supplier) => (
                             <SelectItem key={supplier.id} value={supplier.id}>
                               {supplier.name}
                             </SelectItem>
@@ -367,6 +374,19 @@ const PurchaseModal = ({ item, isOpen, onClose, onStockUpdated }: PurchaseModalP
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Tambah Supplier Item
+                    </Button>
+                  </div>
+                )}
+
+                {getAvailableSuppliers().length === 0 && supplierItems.length > 0 && suppliers.length > 0 && (
+                  <div className="mt-4 pt-4 border-t text-center text-gray-500">
+                    <p>Semua supplier sudah terhubung dengan item ini</p>
+                    <Button 
+                      onClick={() => setActiveTab("add-supplier")} 
+                      variant="outline"
+                      className="mt-2"
+                    >
+                      Tambah Supplier Baru
                     </Button>
                   </div>
                 )}
