@@ -6,7 +6,7 @@ import { toast } from '@/hooks/use-toast';
 export interface ProductionOrder {
   id: string;
   order_number: string;
-  bom_id?: string;
+  bom_id: string;
   quantity_to_produce: number;
   status: 'planned' | 'in_progress' | 'completed' | 'cancelled';
   planned_date?: string;
@@ -18,17 +18,19 @@ export interface ProductionOrder {
   updated_at: string;
   bill_of_materials?: {
     name: string;
-    yield_quantity: number;
-    total_cost?: number;
-    product?: {
-      name: string;
-    };
+    description?: string;
   };
 }
 
 export const useProductionOrders = () => {
   const [productionOrders, setProductionOrders] = useState<ProductionOrder[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const generateOrderNumber = () => {
+    const now = new Date();
+    const timestamp = now.getTime().toString().slice(-6);
+    return `PO-${now.getFullYear()}-${timestamp}`;
+  };
 
   const fetchProductionOrders = async () => {
     try {
@@ -37,17 +39,15 @@ export const useProductionOrders = () => {
         .from('production_orders')
         .select(`
           *,
-          bill_of_materials(
+          bill_of_materials (
             name,
-            yield_quantity,
-            total_cost,
-            product:products(name)
+            description
           )
         `)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      setProductionOrders(data || []);
+      setProductionOrders((data || []) as ProductionOrder[]);
     } catch (error) {
       console.error('Error fetching production orders:', error);
       toast({
@@ -60,28 +60,24 @@ export const useProductionOrders = () => {
     }
   };
 
-  const addProductionOrder = async (orderData: Omit<ProductionOrder, 'id' | 'created_at' | 'updated_at' | 'bill_of_materials'>) => {
+  const addProductionOrder = async (orderData: Omit<ProductionOrder, 'id' | 'order_number' | 'bill_of_materials' | 'created_at' | 'updated_at'>) => {
     try {
-      // Generate order number
-      const orderNumber = `PO-${Date.now()}`;
-      
+      const order_number = generateOrderNumber();
       const { data, error } = await supabase
         .from('production_orders')
-        .insert([{ ...orderData, order_number: orderNumber }])
+        .insert([{ ...orderData, order_number }])
         .select(`
           *,
-          bill_of_materials(
+          bill_of_materials (
             name,
-            yield_quantity,
-            total_cost,
-            product:products(name)
+            description
           )
         `)
         .single();
       
       if (error) throw error;
       
-      setProductionOrders(prev => [data, ...prev]);
+      setProductionOrders(prev => [data as ProductionOrder, ...prev]);
       
       toast({
         title: "Production Order berhasil dibuat",
@@ -100,27 +96,17 @@ export const useProductionOrders = () => {
     }
   };
 
-  const updateProductionOrderStatus = async (id: string, status: ProductionOrder['status']) => {
+  const updateProductionOrder = async (id: string, updates: Partial<ProductionOrder>) => {
     try {
-      const updates: any = { status };
-      
-      if (status === 'in_progress') {
-        updates.started_at = new Date().toISOString();
-      } else if (status === 'completed') {
-        updates.completed_at = new Date().toISOString();
-      }
-      
       const { data, error } = await supabase
         .from('production_orders')
         .update(updates)
         .eq('id', id)
         .select(`
           *,
-          bill_of_materials(
+          bill_of_materials (
             name,
-            yield_quantity,
-            total_cost,
-            product:products(name)
+            description
           )
         `)
         .single();
@@ -128,85 +114,46 @@ export const useProductionOrders = () => {
       if (error) throw error;
       
       setProductionOrders(prev => prev.map(order => 
-        order.id === id ? data : order
+        order.id === id ? data as ProductionOrder : order
       ));
       
       toast({
-        title: "Status berhasil diperbarui",
-        description: `Production order status diubah ke ${status}`,
+        title: "Production Order diperbarui",
+        description: `Order ${data.order_number} telah diperbarui`,
       });
       
       return data;
     } catch (error) {
-      console.error('Error updating production order status:', error);
+      console.error('Error updating production order:', error);
       toast({
         title: "Error",
-        description: "Gagal memperbarui status production order",
+        description: "Gagal memperbarui production order",
         variant: "destructive"
       });
       throw error;
     }
   };
 
-  const simulateProduction = async (bomId: string, quantity: number) => {
+  const deleteProductionOrder = async (id: string) => {
     try {
-      // Get BOM details with items
-      const { data: bom, error: bomError } = await supabase
-        .from('bill_of_materials')
-        .select(`
-          *,
-          bom_items(
-            *,
-            inventory_item:inventory_items(name, current_stock, unit, unit_cost)
-          )
-        `)
-        .eq('id', bomId)
-        .single();
+      const { error } = await supabase
+        .from('production_orders')
+        .delete()
+        .eq('id', id);
       
-      if (bomError) throw bomError;
+      if (error) throw error;
       
-      const simulation = {
-        bomName: bom.name,
-        requestedQuantity: quantity,
-        canProduce: true,
-        limitingFactor: null as string | null,
-        maxProducible: quantity,
-        materialRequirements: [] as any[],
-        estimatedCost: 0
-      };
+      setProductionOrders(prev => prev.filter(order => order.id !== id));
       
-      for (const bomItem of bom.bom_items) {
-        const requiredQuantity = bomItem.quantity_required * quantity;
-        const available = bomItem.inventory_item.current_stock;
-        const canSupply = available >= requiredQuantity;
-        const maxFromThisItem = Math.floor(available / bomItem.quantity_required);
-        
-        if (!canSupply && maxFromThisItem < simulation.maxProducible) {
-          simulation.maxProducible = maxFromThisItem;
-          simulation.limitingFactor = bomItem.inventory_item.name;
-          simulation.canProduce = false;
-        }
-        
-        const cost = (bomItem.unit_cost || bomItem.inventory_item.unit_cost || 0) * requiredQuantity;
-        simulation.estimatedCost += cost;
-        
-        simulation.materialRequirements.push({
-          name: bomItem.inventory_item.name,
-          required: requiredQuantity,
-          available: available,
-          unit: bomItem.inventory_item.unit,
-          canSupply,
-          unitCost: bomItem.unit_cost || bomItem.inventory_item.unit_cost || 0,
-          totalCost: cost
-        });
-      }
-      
-      return simulation;
+      toast({
+        title: "Production Order dihapus",
+        description: "Order berhasil dihapus",
+      });
     } catch (error) {
-      console.error('Error simulating production:', error);
+      console.error('Error deleting production order:', error);
       toast({
         title: "Error",
-        description: "Gagal melakukan simulasi produksi",
+        description: "Gagal menghapus production order",
         variant: "destructive"
       });
       throw error;
@@ -221,8 +168,8 @@ export const useProductionOrders = () => {
     productionOrders,
     loading,
     addProductionOrder,
-    updateProductionOrderStatus,
-    simulateProduction,
+    updateProductionOrder,
+    deleteProductionOrder,
     refetch: fetchProductionOrders
   };
 };

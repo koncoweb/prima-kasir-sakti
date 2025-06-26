@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -80,39 +81,47 @@ const Index = () => {
 
         {/* Main Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 bg-white p-1 h-12">
-            <TabsTrigger value="dashboard" className="flex items-center space-x-2">
-              <BarChart3 className="h-4 w-4" />
-              <span>Dashboard</span>
-            </TabsTrigger>
-            <TabsTrigger value="pos" className="flex items-center space-x-2">
-              <ShoppingCart className="h-4 w-4" />
-              <span>POS</span>
-            </TabsTrigger>
-            <TabsTrigger value="products" className="flex items-center space-x-2">
-              <Package className="h-4 w-4" />
-              <span>Produk</span>
-            </TabsTrigger>
-            <TabsTrigger value="inventory" className="flex items-center space-x-2">
-              <Package className="h-4 w-4" />
-              <span>Inventory</span>
-            </TabsTrigger>
-            <TabsTrigger value="inventory-items" className="flex items-center space-x-2">
-              <Database className="h-4 w-4" />
-              <span>Items</span>
-            </TabsTrigger>
-            <TabsTrigger value="bom" className="flex items-center space-x-2">
-              <Receipt className="h-4 w-4" />
-              <span>BOM</span>
-            </TabsTrigger>
-            <TabsTrigger value="production" className="flex items-center space-x-2">
-              <Receipt className="h-4 w-4" />
-              <span>Produksi</span>
-            </TabsTrigger>
-            <TabsTrigger value="transactions" className="flex items-center space-x-2">
-              <Receipt className="h-4 w-4" />
-              <span>Transaksi</span>
-            </TabsTrigger>
+          <TabsList className="w-full bg-white p-1 h-auto">
+            <div className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1">
+              <TabsTrigger value="dashboard" className="flex flex-col items-center space-y-1 p-2 text-xs">
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+                <span className="sm:hidden">Dash</span>
+              </TabsTrigger>
+              <TabsTrigger value="pos" className="flex flex-col items-center space-y-1 p-2 text-xs">
+                <ShoppingCart className="h-4 w-4" />
+                <span>POS</span>
+              </TabsTrigger>
+              <TabsTrigger value="products" className="flex flex-col items-center space-y-1 p-2 text-xs">
+                <Package className="h-4 w-4" />
+                <span className="hidden sm:inline">Produk</span>
+                <span className="sm:hidden">Prod</span>
+              </TabsTrigger>
+              <TabsTrigger value="inventory" className="flex flex-col items-center space-y-1 p-2 text-xs">
+                <Package className="h-4 w-4" />
+                <span className="hidden sm:inline">Inventory</span>
+                <span className="sm:hidden">Inv</span>
+              </TabsTrigger>
+              <TabsTrigger value="inventory-items" className="flex flex-col items-center space-y-1 p-2 text-xs">
+                <Database className="h-4 w-4" />
+                <span className="hidden sm:inline">Items</span>
+                <span className="sm:hidden">Item</span>
+              </TabsTrigger>
+              <TabsTrigger value="bom" className="flex flex-col items-center space-y-1 p-2 text-xs">
+                <Receipt className="h-4 w-4" />
+                <span>BOM</span>
+              </TabsTrigger>
+              <TabsTrigger value="production" className="flex flex-col items-center space-y-1 p-2 text-xs">
+                <Receipt className="h-4 w-4" />
+                <span className="hidden sm:inline">Produksi</span>
+                <span className="sm:hidden">Prod</span>
+              </TabsTrigger>
+              <TabsTrigger value="transactions" className="flex flex-col items-center space-y-1 p-2 text-xs">
+                <Receipt className="h-4 w-4" />
+                <span className="hidden sm:inline">Transaksi</span>
+                <span className="sm:hidden">Trans</span>
+              </TabsTrigger>
+            </div>
           </TabsList>
 
           <TabsContent value="dashboard">

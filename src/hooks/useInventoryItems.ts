@@ -34,7 +34,7 @@ export const useInventoryItems = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      setInventoryItems(data || []);
+      setInventoryItems((data || []) as InventoryItem[]);
     } catch (error) {
       console.error('Error fetching inventory items:', error);
       toast({
@@ -57,7 +57,7 @@ export const useInventoryItems = () => {
       
       if (error) throw error;
       
-      setInventoryItems(prev => [data, ...prev]);
+      setInventoryItems(prev => [data as InventoryItem, ...prev]);
       
       toast({
         title: "Item berhasil ditambahkan",
@@ -88,7 +88,7 @@ export const useInventoryItems = () => {
       if (error) throw error;
       
       setInventoryItems(prev => prev.map(item => 
-        item.id === id ? data : item
+        item.id === id ? data as InventoryItem : item
       ));
       
       toast({
