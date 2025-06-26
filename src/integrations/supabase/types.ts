@@ -9,6 +9,95 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      bill_of_materials: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          product_id: string | null
+          total_cost: number | null
+          updated_at: string | null
+          yield_quantity: number
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          product_id?: string | null
+          total_cost?: number | null
+          updated_at?: string | null
+          yield_quantity?: number
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          product_id?: string | null
+          total_cost?: number | null
+          updated_at?: string | null
+          yield_quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_of_materials_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bom_items: {
+        Row: {
+          bom_id: string | null
+          created_at: string | null
+          id: string
+          inventory_item_id: string | null
+          notes: string | null
+          quantity_required: number
+          unit_cost: number | null
+        }
+        Insert: {
+          bom_id?: string | null
+          created_at?: string | null
+          id?: string
+          inventory_item_id?: string | null
+          notes?: string | null
+          quantity_required: number
+          unit_cost?: number | null
+        }
+        Update: {
+          bom_id?: string | null
+          created_at?: string | null
+          id?: string
+          inventory_item_id?: string | null
+          notes?: string | null
+          quantity_required?: number
+          unit_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bom_items_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "bill_of_materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bom_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string | null
@@ -64,6 +153,155 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: true
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_items: {
+        Row: {
+          created_at: string | null
+          current_stock: number
+          description: string | null
+          id: string
+          is_active: boolean | null
+          item_type: string
+          last_restock_date: string | null
+          max_stock: number
+          min_stock: number
+          name: string
+          supplier_info: string | null
+          unit: string
+          unit_cost: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_stock?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          item_type: string
+          last_restock_date?: string | null
+          max_stock?: number
+          min_stock?: number
+          name: string
+          supplier_info?: string | null
+          unit?: string
+          unit_cost?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_stock?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          item_type?: string
+          last_restock_date?: string | null
+          max_stock?: number
+          min_stock?: number
+          name?: string
+          supplier_info?: string | null
+          unit?: string
+          unit_cost?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      production_materials: {
+        Row: {
+          created_at: string | null
+          id: string
+          inventory_item_id: string | null
+          production_order_id: string | null
+          quantity_planned: number
+          quantity_used: number | null
+          unit_cost: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          inventory_item_id?: string | null
+          production_order_id?: string | null
+          quantity_planned: number
+          quantity_used?: number | null
+          unit_cost?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          inventory_item_id?: string | null
+          production_order_id?: string | null
+          quantity_planned?: number
+          quantity_used?: number | null
+          unit_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_materials_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_materials_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_orders: {
+        Row: {
+          bom_id: string | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          notes: string | null
+          order_number: string
+          planned_date: string | null
+          quantity_to_produce: number
+          started_at: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          bom_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          order_number: string
+          planned_date?: string | null
+          quantity_to_produce: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          bom_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          order_number?: string
+          planned_date?: string | null
+          quantity_to_produce?: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_orders_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "bill_of_materials"
             referencedColumns: ["id"]
           },
         ]

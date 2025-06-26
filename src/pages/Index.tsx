@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +7,9 @@ import { ShoppingCart, Package, Receipt, BarChart3, Database } from "lucide-reac
 import POSInterface from "@/components/POSInterface";
 import ProductManager from "@/components/ProductManager";
 import InventoryTracker from "@/components/InventoryTracker";
+import InventoryItemsManager from "@/components/InventoryItemsManager";
+import BOMManager from "@/components/BOMManager";
+import ProductionManager from "@/components/ProductionManager";
 import TransactionHistory from "@/components/TransactionHistory";
 import Dashboard from "@/components/Dashboard";
 import { migrateData } from "@/utils/dataMigration";
@@ -78,7 +80,7 @@ const Index = () => {
 
         {/* Main Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-white p-1 h-12">
+          <TabsList className="grid w-full grid-cols-7 bg-white p-1 h-12">
             <TabsTrigger value="dashboard" className="flex items-center space-x-2">
               <BarChart3 className="h-4 w-4" />
               <span>Dashboard</span>
@@ -94,6 +96,18 @@ const Index = () => {
             <TabsTrigger value="inventory" className="flex items-center space-x-2">
               <Package className="h-4 w-4" />
               <span>Inventory</span>
+            </TabsTrigger>
+            <TabsTrigger value="inventory-items" className="flex items-center space-x-2">
+              <Database className="h-4 w-4" />
+              <span>Items</span>
+            </TabsTrigger>
+            <TabsTrigger value="bom" className="flex items-center space-x-2">
+              <Receipt className="h-4 w-4" />
+              <span>BOM</span>
+            </TabsTrigger>
+            <TabsTrigger value="production" className="flex items-center space-x-2">
+              <Receipt className="h-4 w-4" />
+              <span>Produksi</span>
             </TabsTrigger>
             <TabsTrigger value="transactions" className="flex items-center space-x-2">
               <Receipt className="h-4 w-4" />
@@ -115,6 +129,18 @@ const Index = () => {
 
           <TabsContent value="inventory">
             <InventoryTracker />
+          </TabsContent>
+
+          <TabsContent value="inventory-items">
+            <InventoryItemsManager />
+          </TabsContent>
+
+          <TabsContent value="bom">
+            <BOMManager />
+          </TabsContent>
+
+          <TabsContent value="production">
+            <ProductionManager />
           </TabsContent>
 
           <TabsContent value="transactions">
