@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import { useProducts } from "@/hooks/useProducts";
@@ -32,6 +31,7 @@ interface CompletedTransaction {
   discountValue: number;
   taxAmount: number;
   taxRate: number;
+  taxEnabled: boolean;
   total: number;
   paymentAmount: number;
   changeAmount: number;
@@ -44,6 +44,7 @@ interface CompletedTransaction {
 const POSInterface = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [subtotal, setSubtotal] = useState(0);
+  const [taxEnabled, setTaxEnabled] = useState(true);
   const [taxRate, setTaxRate] = useState(10);
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
   const [discountValue, setDiscountValue] = useState(0);
@@ -154,7 +155,7 @@ const POSInterface = () => {
 
     // Apply discount first, then tax
     const discountedSubtotal = Math.max(0, newSubtotal - discountAmount);
-    const taxAmount = (discountedSubtotal * taxRate) / 100;
+    const taxAmount = taxEnabled ? (discountedSubtotal * taxRate) / 100 : 0;
     const finalTotal = discountedSubtotal + taxAmount;
     
     setTotal(finalTotal);
@@ -200,6 +201,7 @@ const POSInterface = () => {
       };
 
       const getTaxAmount = () => {
+        if (!taxEnabled) return 0;
         const discountAmount = getDiscountAmount();
         const discountedSubtotal = Math.max(0, subtotal - discountAmount);
         return (discountedSubtotal * taxRate) / 100;
@@ -279,6 +281,7 @@ const POSInterface = () => {
         discountValue,
         taxAmount: Math.round(taxAmount),
         taxRate,
+        taxEnabled,
         total,
         paymentAmount: Math.round(paymentAmount),
         changeAmount: Math.round(changeAmount),
@@ -322,7 +325,7 @@ const POSInterface = () => {
 
   useEffect(() => {
     calculateTotals();
-  }, [cart, taxRate, discountType, discountValue]);
+  }, [cart, taxEnabled, taxRate, discountType, discountValue]);
 
   useEffect(() => {
     calculateChange();
@@ -339,6 +342,7 @@ const POSInterface = () => {
         discountValue={completedTransaction.discountValue}
         taxAmount={completedTransaction.taxAmount}
         taxRate={completedTransaction.taxRate}
+        taxEnabled={completedTransaction.taxEnabled}
         total={completedTransaction.total}
         paymentAmount={completedTransaction.paymentAmount}
         changeAmount={completedTransaction.changeAmount}
@@ -383,6 +387,7 @@ const POSInterface = () => {
         <CartSummary
           cart={cart}
           subtotal={subtotal}
+          taxEnabled={taxEnabled}
           taxRate={taxRate}
           discountType={discountType}
           discountValue={discountValue}
@@ -392,6 +397,7 @@ const POSInterface = () => {
           isProcessing={isProcessing}
           onUpdateQuantity={updateQuantity}
           onRemoveFromCart={removeFromCart}
+          onTaxEnabledChange={setTaxEnabled}
           onTaxRateChange={setTaxRate}
           onDiscountTypeChange={setDiscountType}
           onDiscountValueChange={setDiscountValue}

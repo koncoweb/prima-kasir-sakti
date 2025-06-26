@@ -20,6 +20,7 @@ interface ReceiptProps {
   discountValue: number;
   taxAmount: number;
   taxRate: number;
+  taxEnabled: boolean;
   total: number;
   paymentAmount: number;
   changeAmount: number;
@@ -39,6 +40,7 @@ const Receipt: React.FC<ReceiptProps> = ({
   discountValue,
   taxAmount,
   taxRate,
+  taxEnabled,
   total,
   paymentAmount,
   changeAmount,
@@ -182,10 +184,12 @@ const Receipt: React.FC<ReceiptProps> = ({
             </div>
           ` : ''}
           
-          <div class="summary-row">
-            <span>Pajak (${taxRate}%):</span>
-            <span>Rp ${taxAmount.toLocaleString('id-ID')}</span>
-          </div>
+          ${taxEnabled ? `
+            <div class="summary-row">
+              <span>Pajak (${taxRate}%):</span>
+              <span>Rp ${taxAmount.toLocaleString('id-ID')}</span>
+            </div>
+          ` : ''}
           
           <div class="summary-row total-row">
             <span>TOTAL:</span>
