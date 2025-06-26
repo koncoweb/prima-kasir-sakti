@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, Plus, Edit, Trash2, Package, Beaker, Wrench, TrendingUp, TrendingDown, ShoppingCart } from "lucide-react";
 import { useInventoryItems } from "@/hooks/useInventoryItems";
+import { toast } from "@/hooks/use-toast";
 import EditProductModal from "./EditProductModal";
 import PurchaseModal from "./PurchaseModal";
 
@@ -18,7 +20,7 @@ const InventoryItemsManager = () => {
   const [newItem, setNewItem] = useState({
     name: "",
     description: "",
-    item_type: "raw_material" as const,
+    item_type: "raw_material" as "raw_material" | "supply" | "product",
     unit: "pcs",
     current_stock: 0,
     min_stock: 0,
@@ -215,7 +217,7 @@ const InventoryItemsManager = () => {
                         <label className="text-sm font-medium">Tipe Item</label>
                         <Select
                           value={newItem.item_type}
-                          onValueChange={(value: any) => setNewItem({...newItem, item_type: value})}
+                          onValueChange={(value: "raw_material" | "supply" | "product") => setNewItem({...newItem, item_type: value})}
                         >
                           <SelectTrigger>
                             <SelectValue />

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +13,14 @@ const ProductManager = () => {
   const [editProduct, setEditProduct] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const handleAddProduct = async (productData: any) => {
+    try {
+      await addProduct(productData);
+    } catch (error) {
+      console.error('Error adding product:', error);
+    }
+  };
 
   const handleUpdateProduct = async (id: string, updates: any) => {
     try {
@@ -75,7 +82,7 @@ const ProductManager = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <IntegratedAddProductModal categories={categories} onAddProduct={addProduct} />
+              <IntegratedAddProductModal categories={categories} onAddProduct={handleAddProduct} />
             </div>
           </div>
         </CardHeader>
