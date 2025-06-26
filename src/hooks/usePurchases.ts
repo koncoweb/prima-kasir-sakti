@@ -88,22 +88,34 @@ export const usePurchases = () => {
       
       if (error) throw error;
 
-      // Update inventory stock
-      const { error: stockError } = await supabase
+      // Get current stock first, then update it
+      const { data: currentItem, error: fetchError } = await supabase
         .from('inventory_items')
-        .update({ 
-          current_stock: supabase.raw(`current_stock + ${purchaseData.quantity_purchased}`),
-          last_restock_date: new Date().toISOString().split('T')[0]
-        })
-        .eq('id', purchaseData.inventory_item_id);
+        .select('current_stock')
+        .eq('id', purchaseData.inventory_item_id)
+        .single();
 
-      if (stockError) {
-        console.error('Error updating stock:', stockError);
-        toast({
-          title: "Warning",
-          description: "Pembelian berhasil, tapi gagal update stok otomatis",
-          variant: "destructive"
-        });
+      if (fetchError) {
+        console.error('Error fetching current stock:', fetchError);
+      } else {
+        const newStock = currentItem.current_stock + purchaseData.quantity_purchased;
+        
+        const { error: stockError } = await supabase
+          .from('inventory_items')
+          .update({ 
+            current_stock: newStock,
+            last_restock_date: new Date().toISOString().split('T')[0]
+          })
+          .eq('id', purchaseData.inventory_item_id);
+
+        if (stockError) {
+          console.error('Error updating stock:', stockError);
+          toast({
+            title: "Warning",
+            description: "Pembelian berhasil, tapi gagal update stok otomatis",
+            variant: "destructive"
+          });
+        }
       }
 
       // Update supplier item last purchase date
