@@ -7,8 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Plus, Edit, Trash2, Package, Beaker, Wrench, TrendingUp, TrendingDown } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Package, Beaker, Wrench, TrendingUp, TrendingDown, ShoppingCart } from "lucide-react";
 import { useInventoryItems } from "@/hooks/useInventoryItems";
+import EditProductModal from "./EditProductModal";
+import PurchaseModal from "./PurchaseModal";
 
 const InventoryItemsManager = () => {
   const { inventoryItems, loading, addInventoryItem, updateInventoryItem, updateStock, deleteInventoryItem } = useInventoryItems();
@@ -26,8 +28,10 @@ const InventoryItemsManager = () => {
   });
 
   const [editItem, setEditItem] = useState<any>(null);
+  const [purchaseItem, setPurchaseItem] = useState<any>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
 
@@ -90,6 +94,11 @@ const InventoryItemsManager = () => {
   const openEditModal = (item: any) => {
     setEditItem({ ...item });
     setIsEditModalOpen(true);
+  };
+
+  const openPurchaseModal = (item: any) => {
+    setPurchaseItem(item);
+    setIsPurchaseModalOpen(true);
   };
 
   const getItemTypeIcon = (type: string) => {
@@ -334,6 +343,13 @@ const InventoryItemsManager = () => {
                       </Button>
                       <Button 
                         size="sm" 
+                        onClick={() => openPurchaseModal(item)}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <ShoppingCart className="h-3 w-3" />
+                      </Button>
+                      <Button 
+                        size="sm" 
                         variant="outline"
                         onClick={() => openEditModal(item)}
                         className="bg-white/80 backdrop-blur-sm border-slate-200"
@@ -466,6 +482,20 @@ const InventoryItemsManager = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Purchase Modal */}
+      <PurchaseModal
+        item={purchaseItem}
+        isOpen={isPurchaseModalOpen}
+        onClose={() => {
+          setIsPurchaseModalOpen(false);
+          setPurchaseItem(null);
+        }}
+        onStockUpdated={() => {
+          // Refresh inventory items data
+          window.location.reload();
+        }}
+      />
     </div>
   );
 };
