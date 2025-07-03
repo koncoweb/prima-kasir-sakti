@@ -17,47 +17,11 @@ import {
   getProductionCostAnalysis, 
   getInventoryValuation, 
   getBOMProfitability,
-  getLowStockItems 
+  getLowStockItems,
+  type ProductionCostAnalysis,
+  type InventoryValuation,
+  type BOMProfitability
 } from '@/utils/enhancedProductionUtils';
-
-interface ProductionCostAnalysis {
-  production_order_id: string;
-  order_number: string;
-  quantity_to_produce: number;
-  recipe_name: string;
-  product_name: string;
-  planned_cost: number;
-  actual_cost: number;
-  cost_variance: number;
-  cost_per_unit: number;
-  status: string;
-  created_at: string;
-  completed_at?: string;
-}
-
-interface InventoryValuation {
-  id: string;
-  name: string;
-  item_type: string;
-  current_stock: number;
-  min_stock: number;
-  max_stock: number;
-  standard_cost: number;
-  latest_cost: number;
-  standard_value: number;
-  latest_value: number;
-  stock_status: 'LOW_STOCK' | 'OVERSTOCK' | 'NORMAL';
-}
-
-interface BOMProfitability {
-  id: string;
-  bom_name: string;
-  product_name: string;
-  selling_price: number;
-  production_cost: number;
-  gross_profit: number;
-  profit_margin_percent: number;
-}
 
 const ProductionDashboard = () => {
   const [costAnalysis, setCostAnalysis] = useState<ProductionCostAnalysis[]>([]);
@@ -70,12 +34,21 @@ const ProductionDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
+        console.log('Fetching dashboard data...');
+        
         const [costData, inventoryData, profitabilityData, lowStockData] = await Promise.all([
           getProductionCostAnalysis(),
           getInventoryValuation(),
           getBOMProfitability(),
           getLowStockItems()
         ]);
+
+        console.log('Dashboard data fetched:', {
+          costData: costData.length,
+          inventoryData: inventoryData.length,
+          profitabilityData: profitabilityData.length,
+          lowStockData: lowStockData.length
+        });
 
         setCostAnalysis(costData);
         setInventoryValuation(inventoryData);

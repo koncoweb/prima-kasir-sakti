@@ -20,13 +20,52 @@ export interface ProductionResult {
   insufficientStock?: EnhancedMaterialConsumption[];
 }
 
+export interface ProductionCostAnalysis {
+  production_order_id: string;
+  order_number: string;
+  quantity_to_produce: number;
+  recipe_name: string;
+  product_name: string;
+  planned_cost: number;
+  actual_cost: number;
+  cost_variance: number;
+  cost_per_unit: number;
+  status: string;
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface InventoryValuation {
+  id: string;
+  name: string;
+  item_type: string;
+  current_stock: number;
+  min_stock: number;
+  max_stock: number;
+  standard_cost: number;
+  latest_cost: number;
+  standard_value: number;
+  latest_value: number;
+  stock_status: 'LOW_STOCK' | 'OVERSTOCK' | 'NORMAL';
+}
+
+export interface BOMProfitability {
+  id: string;
+  bom_name: string;
+  product_name: string;
+  selling_price: number;
+  production_cost: number;
+  gross_profit: number;
+  profit_margin_percent: number;
+}
+
 export const completeProductionOrderEnhanced = async (
   orderId: string
 ): Promise<ProductionResult> => {
   try {
     console.log('Starting enhanced production completion for order:', orderId);
     
-    // Call the enhanced database function
+    // Call the enhanced database function using rpc
     const { data, error } = await supabase.rpc('complete_production_order_enhanced', {
       order_id: orderId
     });
@@ -39,26 +78,42 @@ export const completeProductionOrderEnhanced = async (
       };
     }
 
-    if (!data?.success) {
-      console.log('Production completion failed:', data);
+    // Parse the JSON response if it's a string
+    let result;
+    if (typeof data === 'string') {
+      try {
+        result = JSON.parse(data);
+      } catch (parseError) {
+        console.error('Error parsing response:', parseError);
+        return { 
+          success: false, 
+          error: 'Invalid response format from server' 
+        };
+      }
+    } else {
+      result = data;
+    }
+
+    if (!result?.success) {
+      console.log('Production completion failed:', result);
       return {
         success: false,
-        error: data?.error || 'Unknown error occurred during production'
+        error: result?.error || 'Unknown error occurred during production'
       };
     }
 
-    console.log('Production completed successfully:', data);
+    console.log('Production completed successfully:', result);
     
     toast({
       title: "Production Completed",
-      description: `Production order completed successfully. Produced ${data.produced_quantity} units.`,
+      description: `Production order completed successfully. Produced ${result.produced_quantity} units.`,
     });
 
     return {
       success: true,
-      produced_quantity: data.produced_quantity,
-      product_inventory_updated: data.product_inventory_updated,
-      materials_consumed: data.materials_consumed
+      produced_quantity: result.produced_quantity,
+      product_inventory_updated: result.product_inventory_updated,
+      materials_consumed: result.materials_consumed
     };
 
   } catch (error) {
@@ -70,11 +125,30 @@ export const completeProductionOrderEnhanced = async (
   }
 };
 
-export const getProductionCostAnalysis = async () => {
+export const getProductionCostAnalysis = async (): Promise<ProductionCostAnalysis[]> => {
   try {
+    // Since views aren't in types, we'll query the underlying tables and join manually
     const { data, error } = await supabase
-      .from('production_cost_analysis')
-      .select('*')
+      .from('production_orders')
+      .select(`
+        id,
+        order_number,
+        quantity_to_produce,
+        status,
+        created_at,
+        completed_at,
+        bill_of_materials:bom_id (
+          name,
+          total_cost,
+          products:product_id (
+            name
+          )
+        ),
+        production_materials (
+          quantity_used,
+          unit_cost
+        )
+      `)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -82,18 +156,50 @@ export const getProductionCostAnalysis = async () => {
       throw error;
     }
 
-    return data || [];
+    // Transform the data to match our interface
+    const analysisData: ProductionCostAnalysis[] = (data || []).map(order => {
+      const actualCost = (order.production_materials || []).reduce((sum, material) => 
+        sum + ((material.quantity_used || 0) * (material.unit_cost || 0)), 0
+      );
+      const plannedCost = order.bill_of_materials?.total_cost || 0;
+      
+      return {
+        production_order_id: order.id,
+        order_number: order.order_number,
+        quantity_to_produce: order.quantity_to_produce,
+        recipe_name: order.bill_of_materials?.name || 'Unknown',
+        product_name: order.bill_of_materials?.products?.name || 'Unknown',
+        planned_cost: plannedCost,
+        actual_cost: actualCost,
+        cost_variance: actualCost - plannedCost,
+        cost_per_unit: order.quantity_to_produce > 0 ? actualCost / order.quantity_to_produce : 0,
+        status: order.status,
+        created_at: order.created_at || '',
+        completed_at: order.completed_at || undefined
+      };
+    });
+
+    return analysisData;
   } catch (error) {
     console.error('Error in getProductionCostAnalysis:', error);
     throw error;
   }
 };
 
-export const getInventoryValuation = async () => {
+export const getInventoryValuation = async (): Promise<InventoryValuation[]> => {
   try {
     const { data, error } = await supabase
-      .from('inventory_valuation')
-      .select('*')
+      .from('inventory_items')
+      .select(`
+        id,
+        name,
+        item_type,
+        current_stock,
+        min_stock,
+        max_stock,
+        unit_cost
+      `)
+      .eq('is_active', true)
       .order('name');
 
     if (error) {
@@ -101,46 +207,84 @@ export const getInventoryValuation = async () => {
       throw error;
     }
 
-    return data || [];
+    // Transform data to match interface
+    const valuationData: InventoryValuation[] = (data || []).map(item => {
+      const stockStatus: 'LOW_STOCK' | 'OVERSTOCK' | 'NORMAL' = 
+        item.current_stock <= item.min_stock ? 'LOW_STOCK' :
+        item.current_stock >= item.max_stock ? 'OVERSTOCK' : 'NORMAL';
+
+      return {
+        id: item.id,
+        name: item.name,
+        item_type: item.item_type,
+        current_stock: item.current_stock,
+        min_stock: item.min_stock,
+        max_stock: item.max_stock,
+        standard_cost: item.unit_cost || 0,
+        latest_cost: item.unit_cost || 0, // Simplified for now
+        standard_value: item.current_stock * (item.unit_cost || 0),
+        latest_value: item.current_stock * (item.unit_cost || 0),
+        stock_status: stockStatus
+      };
+    });
+
+    return valuationData;
   } catch (error) {
     console.error('Error in getInventoryValuation:', error);
     throw error;
   }
 };
 
-export const getBOMProfitability = async () => {
+export const getBOMProfitability = async (): Promise<BOMProfitability[]> => {
   try {
     const { data, error } = await supabase
-      .from('bom_profitability')
-      .select('*')
-      .order('profit_margin_percent', { ascending: false });
+      .from('bill_of_materials')
+      .select(`
+        id,
+        name,
+        total_cost,
+        products:product_id (
+          name,
+          price
+        )
+      `)
+      .eq('is_active', true)
+      .order('total_cost', { ascending: false });
 
     if (error) {
       console.error('Error fetching BOM profitability:', error);
       throw error;
     }
 
-    return data || [];
+    // Transform data to match interface
+    const profitabilityData: BOMProfitability[] = (data || []).map(bom => {
+      const sellingPrice = bom.products?.price ? bom.products.price / 100 : 0; // Convert from cents
+      const productionCost = bom.total_cost || 0;
+      const grossProfit = sellingPrice - productionCost;
+      const profitMarginPercent = productionCost > 0 ? (grossProfit / productionCost) * 100 : 0;
+
+      return {
+        id: bom.id,
+        bom_name: bom.name,
+        product_name: bom.products?.name || 'Unknown',
+        selling_price: sellingPrice,
+        production_cost: productionCost,
+        gross_profit: grossProfit,
+        profit_margin_percent: profitMarginPercent
+      };
+    });
+
+    return profitabilityData.sort((a, b) => b.profit_margin_percent - a.profit_margin_percent);
   } catch (error) {
     console.error('Error in getBOMProfitability:', error);
     throw error;
   }
 };
 
-export const getLowStockItems = async () => {
+export const getLowStockItems = async (): Promise<InventoryValuation[]> => {
   try {
-    const { data, error } = await supabase
-      .from('inventory_valuation')
-      .select('*')
-      .eq('stock_status', 'LOW_STOCK')
-      .order('name');
-
-    if (error) {
-      console.error('Error fetching low stock items:', error);
-      throw error;
-    }
-
-    return data || [];
+    const allItems = await getInventoryValuation();
+    return allItems.filter(item => item.stock_status === 'LOW_STOCK');
   } catch (error) {
     console.error('Error in getLowStockItems:', error);
     throw error;
