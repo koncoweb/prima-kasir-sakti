@@ -65,55 +65,157 @@ export const completeProductionOrderEnhanced = async (
   try {
     console.log('Starting enhanced production completion for order:', orderId);
     
-    // Call the enhanced database function using rpc
-    const { data, error } = await supabase.rpc('complete_production_order_enhanced', {
-      order_id: orderId
-    });
+    // Get production order details
+    const { data: productionOrder, error: poError } = await supabase
+      .from('production_orders')
+      .select(`
+        *,
+        bill_of_materials:bom_id (
+          *,
+          products:product_id (
+            id,
+            inventory_item_id
+          ),
+          bom_items (
+            *,
+            inventory_items:inventory_item_id (
+              id,
+              name,
+              current_stock
+            )
+          )
+        )
+      `)
+      .eq('id', orderId)
+      .single();
 
-    if (error) {
-      console.error('Error completing production order:', error);
+    if (poError || !productionOrder) {
+      console.error('Error fetching production order:', poError);
       return { 
         success: false, 
-        error: `Failed to complete production: ${error.message}` 
+        error: `Failed to fetch production order: ${poError?.message}` 
       };
     }
 
-    // Parse the JSON response if it's a string
-    let result;
-    if (typeof data === 'string') {
-      try {
-        result = JSON.parse(data);
-      } catch (parseError) {
-        console.error('Error parsing response:', parseError);
-        return { 
-          success: false, 
-          error: 'Invalid response format from server' 
-        };
-      }
-    } else {
-      result = data;
+    const bom = productionOrder.bill_of_materials;
+    if (!bom) {
+      return { 
+        success: false, 
+        error: 'No BOM found for this production order' 
+      };
     }
 
-    if (!result?.success) {
-      console.log('Production completion failed:', result);
+    // Check material availability
+    const insufficientStock: EnhancedMaterialConsumption[] = [];
+    for (const bomItem of bom.bom_items || []) {
+      const requiredQty = bomItem.quantity_required * productionOrder.quantity_to_produce;
+      const availableStock = bomItem.inventory_items?.current_stock || 0;
+      
+      if (availableStock < requiredQty) {
+        insufficientStock.push({
+          inventory_item_id: bomItem.inventory_item_id || '',
+          quantity_consumed: requiredQty,
+          item_name: bomItem.inventory_items?.name || 'Unknown',
+          available_stock: availableStock
+        });
+      }
+    }
+
+    if (insufficientStock.length > 0) {
       return {
         success: false,
-        error: result?.error || 'Unknown error occurred during production'
+        error: 'Insufficient stock for production',
+        insufficientStock
       };
     }
 
-    console.log('Production completed successfully:', result);
+    // Consume materials
+    for (const bomItem of bom.bom_items || []) {
+      const requiredQty = bomItem.quantity_required * productionOrder.quantity_to_produce;
+      
+      // Update inventory
+      const { error: updateError } = await supabase
+        .from('inventory_items')
+        .update({
+          current_stock: (bomItem.inventory_items?.current_stock || 0) - requiredQty,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bomItem.inventory_item_id);
+
+      if (updateError) {
+        console.error('Error updating inventory:', updateError);
+        return {
+          success: false,
+          error: `Failed to update inventory: ${updateError.message}`
+        };
+      }
+
+      // Record material consumption
+      const { error: materialError } = await supabase
+        .from('production_materials')
+        .upsert({
+          production_order_id: orderId,
+          inventory_item_id: bomItem.inventory_item_id,
+          quantity_planned: requiredQty,
+          quantity_used: requiredQty,
+          unit_cost: bomItem.unit_cost || 0
+        });
+
+      if (materialError) {
+        console.error('Error recording material usage:', materialError);
+      }
+    }
+
+    // Calculate produced quantity
+    const producedQuantity = productionOrder.quantity_to_produce * (bom.yield_quantity || 1);
+    let productInventoryUpdated = false;
+
+    // Update finished product inventory if linked
+    if (bom.products?.inventory_item_id) {
+      const { error: productUpdateError } = await supabase
+        .from('inventory_items')
+        .update({
+          current_stock: supabase.sql`current_stock + ${producedQuantity}`,
+          last_restock_date: new Date().toISOString().split('T')[0],
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bom.products.inventory_item_id);
+
+      if (!productUpdateError) {
+        productInventoryUpdated = true;
+      }
+    }
+
+    // Update production order status
+    const { error: statusError } = await supabase
+      .from('production_orders')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', orderId);
+
+    if (statusError) {
+      console.error('Error updating production order status:', statusError);
+      return {
+        success: false,
+        error: `Failed to update production order: ${statusError.message}`
+      };
+    }
+
+    console.log('Production completed successfully');
     
     toast({
       title: "Production Completed",
-      description: `Production order completed successfully. Produced ${result.produced_quantity} units.`,
+      description: `Production order completed successfully. Produced ${producedQuantity} units.`,
     });
 
     return {
       success: true,
-      produced_quantity: result.produced_quantity,
-      product_inventory_updated: result.product_inventory_updated,
-      materials_consumed: result.materials_consumed
+      produced_quantity: producedQuantity,
+      product_inventory_updated: productInventoryUpdated,
+      materials_consumed: true
     };
 
   } catch (error) {
