@@ -13,6 +13,7 @@ export interface ProductionOrder {
   started_at?: string;
   completed_at?: string;
   notes?: string;
+  priority?: string;
   created_by: string;
   created_at: string;
   updated_at: string;

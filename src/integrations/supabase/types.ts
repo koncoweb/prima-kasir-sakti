@@ -263,6 +263,7 @@ export type Database = {
           notes: string | null
           order_number: string
           planned_date: string | null
+          priority: string | null
           quantity_to_produce: number
           started_at: string | null
           status: string
@@ -277,6 +278,7 @@ export type Database = {
           notes?: string | null
           order_number: string
           planned_date?: string | null
+          priority?: string | null
           quantity_to_produce: number
           started_at?: string | null
           status?: string
@@ -291,6 +293,7 @@ export type Database = {
           notes?: string | null
           order_number?: string
           planned_date?: string | null
+          priority?: string | null
           quantity_to_produce?: number
           started_at?: string | null
           status?: string
