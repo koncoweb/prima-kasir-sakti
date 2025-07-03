@@ -1,13 +1,8 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, PlayCircle, CheckCircle, XCircle, Package, Clock, BarChart3 } from 'lucide-react';
+import { Plus, BarChart3 } from 'lucide-react';
 import { useProductionOrders } from '@/hooks/useProductionOrders';
 import { useBillOfMaterials } from '@/hooks/useBillOfMaterials';
 import { 
@@ -17,42 +12,81 @@ import {
 } from '@/utils/enhancedProductionUtils';
 import { toast } from '@/hooks/use-toast';
 import ProductionDashboard from './ProductionDashboard';
+import ProductionOrderForm from './production/ProductionOrderForm';
+import ProductionOrderCard from './production/ProductionOrderCard';
+import ProductionFilters from './production/ProductionFilters';
+import ProductionStats from './production/ProductionStats';
+import RealtimeProductionDashboard from './production/RealtimeProductionDashboard';
 
 const ProductionManager = () => {
   const { productionOrders, loading: ordersLoading, addProductionOrder, updateProductionOrder } = useProductionOrders();
   const { boms, loading: bomsLoading } = useBillOfMaterials();
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [selectedBomId, setSelectedBomId] = useState('');
-  const [quantity, setQuantity] = useState(1);
-  const [plannedDate, setPlannedDate] = useState('');
-  const [notes, setNotes] = useState('');
   const [processingOrders, setProcessingOrders] = useState<Set<string>>(new Set());
+  const [filters, setFilters] = useState({
+    search: '',
+    status: '',
+    priority: '',
+    dateRange: '',
+    bomId: ''
+  });
 
-  const handleCreateOrder = async () => {
-    if (!selectedBomId) {
-      toast({
-        title: "Error",
-        description: "Pilih BOM terlebih dahulu",
-        variant: "destructive"
-      });
-      return;
-    }
+  // Filter production orders based on current filters
+  const filteredOrders = useMemo(() => {
+    return productionOrders.filter(order => {
+      // Search filter
+      if (filters.search && !order.order_number.toLowerCase().includes(filters.search.toLowerCase()) &&
+          !order.bill_of_materials?.name.toLowerCase().includes(filters.search.toLowerCase())) {
+        return false;
+      }
 
+      // Status filter
+      if (filters.status && order.status !== filters.status) {
+        return false;
+      }
+
+      // Priority filter
+      if (filters.priority && order.priority !== filters.priority) {
+        return false;
+      }
+
+      // BOM filter
+      if (filters.bomId && order.bom_id !== filters.bomId) {
+        return false;
+      }
+
+      // Date range filter
+      if (filters.dateRange && order.planned_date) {
+        const orderDate = new Date(order.planned_date);
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const nextWeek = new Date(today);
+        nextWeek.setDate(nextWeek.getDate() + 7);
+
+        switch (filters.dateRange) {
+          case 'today':
+            if (orderDate.toDateString() !== today.toDateString()) return false;
+            break;
+          case 'tomorrow':
+            if (orderDate.toDateString() !== tomorrow.toDateString()) return false;
+            break;
+          case 'this_week':
+            if (orderDate > nextWeek) return false;
+            break;
+          case 'overdue':
+            if (orderDate >= today || order.status === 'completed') return false;
+            break;
+        }
+      }
+
+      return true;
+    });
+  }, [productionOrders, filters]);
+
+  const handleCreateOrder = async (orderData: any) => {
     try {
-      await addProductionOrder({
-        bom_id: selectedBomId,
-        quantity_to_produce: quantity,
-        status: 'planned',
-        planned_date: plannedDate || undefined,
-        notes: notes || undefined,
-        created_by: 'Admin'
-      });
-
-      // Reset form
-      setSelectedBomId('');
-      setQuantity(1);
-      setPlannedDate('');
-      setNotes('');
+      await addProductionOrder(orderData);
       setShowCreateForm(false);
     } catch (error) {
       console.error('Error creating production order:', error);
@@ -95,7 +129,7 @@ const ProductionManager = () => {
       console.error('Error updating production order:', error);
       toast({
         title: "Error",
-        description: "Gagal memperbarui status production order",
+        description: "Failed to update production order status",
         variant: "destructive"
       });
     } finally {
@@ -107,32 +141,12 @@ const ProductionManager = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'planned': return 'bg-blue-100 text-blue-800';
-      case 'in_progress': return 'bg-yellow-100 text-yellow-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'planned': return <Clock className="h-4 w-4" />;
-      case 'in_progress': return <PlayCircle className="h-4 w-4" />;
-      case 'completed': return <CheckCircle className="h-4 w-4" />;
-      case 'cancelled': return <XCircle className="h-4 w-4" />;
-      default: return <Package className="h-4 w-4" />;
-    }
-  };
-
   if (ordersLoading || bomsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Memuat data production orders...</p>
+          <p>Loading production data...</p>
         </div>
       </div>
     );
@@ -143,187 +157,99 @@ const ProductionManager = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Production Management System</h2>
-          <p className="text-gray-600">Kelola production orders dengan sistem terintegrasi</p>
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Production Management System
+          </h2>
+          <p className="text-gray-600 mt-1">Advanced production planning and real-time monitoring</p>
         </div>
-        <Button onClick={() => setShowCreateForm(true)} className="bg-blue-600 hover:bg-blue-700">
+        <Button onClick={() => setShowCreateForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
           <Plus className="h-4 w-4 mr-2" />
-          Production Order Baru
+          New Production Order
         </Button>
       </div>
 
-      {/* Enhanced Tabs for Production Management */}
-      <Tabs defaultValue="orders" className="space-y-4">
-        <TabsList>
+      {/* Create Form Modal */}
+      {showCreateForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <ProductionOrderForm
+            boms={boms}
+            onSubmit={handleCreateOrder}
+            onCancel={() => setShowCreateForm(false)}
+          />
+        </div>
+      )}
+
+      {/* Enhanced Tabs */}
+      <Tabs defaultValue="orders" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="orders">Production Orders</TabsTrigger>
-          <TabsTrigger value="dashboard">Analytics Dashboard</TabsTrigger>
+          <TabsTrigger value="realtime">Real-time Monitor</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics Dashboard</TabsTrigger>
+          <TabsTrigger value="reports">Reports & BI</TabsTrigger>
         </TabsList>
 
         <TabsContent value="orders" className="space-y-6">
-          {/* Create Form */}
-          {showCreateForm && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Buat Production Order Baru</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="bom-select">Bill of Materials</Label>
-                  <select
-                    id="bom-select"
-                    value={selectedBomId}
-                    onChange={(e) => setSelectedBomId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Pilih BOM</option>
-                    {boms.map((bom) => (
-                      <option key={bom.id} value={bom.id}>
-                        {bom.name} (Yield: {bom.yield_quantity})
-                        {bom.product?.name && ` → ${bom.product.name}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+          {/* Production Stats */}
+          <ProductionStats orders={productionOrders} />
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="quantity">Quantity to Produce</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      min="1"
-                      value={quantity}
-                      onChange={(e) => setQuantity(Number(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="planned-date">Planned Date</Label>
-                    <Input
-                      id="planned-date"
-                      type="date"
-                      value={plannedDate}
-                      onChange={(e) => setPlannedDate(e.target.value)}
-                    />
-                  </div>
-                </div>
+          {/* Filters */}
+          <ProductionFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+            boms={boms}
+            totalOrders={productionOrders.length}
+            filteredCount={filteredOrders.length}
+          />
 
-                <div>
-                  <Label htmlFor="notes">Notes</Label>
-                  <textarea
-                    id="notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={3}
-                    placeholder="Catatan production order..."
-                  />
-                </div>
-
-                <div className="flex space-x-2">
-                  <Button onClick={handleCreateOrder} className="bg-green-600 hover:bg-green-700">
-                    Buat Order
-                  </Button>
-                  <Button variant="outline" onClick={() => setShowCreateForm(false)}>
-                    Batal
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Production Orders List */}
+          {/* Production Orders Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {productionOrders.map((order) => (
-              <Card key={order.id} className="bg-white shadow-sm hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{order.order_number}</CardTitle>
-                    <Badge className={`${getStatusColor(order.status)} flex items-center space-x-1`}>
-                      {getStatusIcon(order.status)}
-                      <span className="capitalize">{order.status}</span>
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-600">BOM:</p>
-                    <p className="font-medium">{order.bill_of_materials?.name || 'Unknown'}</p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-600">Quantity:</p>
-                      <p className="font-medium">{order.quantity_to_produce}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">Planned Date:</p>
-                      <p className="font-medium">
-                        {order.planned_date ? new Date(order.planned_date).toLocaleDateString('id-ID') : '-'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {order.notes && (
-                    <div>
-                      <p className="text-sm text-gray-600">Notes:</p>
-                      <p className="text-sm">{order.notes}</p>
-                    </div>
-                  )}
-
-                  <Separator />
-
-                  <div className="flex space-x-2">
-                    {order.status === 'planned' && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleStatusUpdate(order.id, 'in_progress')}
-                        className="bg-yellow-600 hover:bg-yellow-700 flex-1"
-                        disabled={processingOrders.has(order.id)}
-                      >
-                        <PlayCircle className="h-3 w-3 mr-1" />
-                        {processingOrders.has(order.id) ? 'Processing...' : 'Start'}
-                      </Button>
-                    )}
-                    {order.status === 'in_progress' && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleStatusUpdate(order.id, 'completed')}
-                        className="bg-green-600 hover:bg-green-700 flex-1"
-                        disabled={processingOrders.has(order.id)}
-                      >
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        {processingOrders.has(order.id) ? 'Completing...' : 'Complete'}
-                      </Button>
-                    )}
-                    {(order.status === 'planned' || order.status === 'in_progress') && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleStatusUpdate(order.id, 'cancelled')}
-                        className="flex-1"
-                        disabled={processingOrders.has(order.id)}
-                      >
-                        <XCircle className="h-3 w-3 mr-1" />
-                        Cancel
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+            {filteredOrders.map((order) => (
+              <ProductionOrderCard
+                key={order.id}
+                order={order}
+                onStatusUpdate={handleStatusUpdate}
+                isProcessing={processingOrders.has(order.id)}
+              />
             ))}
           </div>
 
-          {productionOrders.length === 0 && (
+          {filteredOrders.length === 0 && (
             <div className="text-center py-12">
-              <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">Belum ada production orders</p>
-              <p className="text-gray-400">Buat production order pertama Anda</p>
+              <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-8 rounded-2xl mb-4 inline-block">
+                <BarChart3 className="h-16 w-16 text-blue-500 mx-auto" />
+              </div>
+              <p className="text-gray-500 text-lg font-medium">
+                {productionOrders.length === 0 
+                  ? "No production orders yet" 
+                  : "No orders match your filters"
+                }
+              </p>
+              <p className="text-gray-400">
+                {productionOrders.length === 0 
+                  ? "Create your first production order to get started" 
+                  : "Try adjusting your search criteria"
+                }
+              </p>
             </div>
           )}
         </TabsContent>
 
-        <TabsContent value="dashboard" className="space-y-6">
+        <TabsContent value="realtime" className="space-y-6">
+          <RealtimeProductionDashboard />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
           <ProductionDashboard />
+        </TabsContent>
+
+        <TabsContent value="reports" className="space-y-6">
+          <div className="text-center py-12">
+            <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 p-8 rounded-2xl mb-4 inline-block">
+              <BarChart3 className="h-16 w-16 text-purple-500 mx-auto" />
+            </div>
+            <p className="text-gray-500 text-lg font-medium">Advanced Reporting Module</p>
+            <p className="text-gray-400">Coming soon - Export capabilities, advanced analytics, and custom reports</p>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
