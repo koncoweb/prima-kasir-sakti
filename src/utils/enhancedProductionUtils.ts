@@ -107,17 +107,22 @@ export const completeProductionOrderEnhanced = async (
 
     // Check material availability
     const insufficientStock: EnhancedMaterialConsumption[] = [];
-    for (const bomItem of bom.bom_items || []) {
-      const requiredQty = bomItem.quantity_required * productionOrder.quantity_to_produce;
-      const availableStock = bomItem.inventory_items?.current_stock || 0;
-      
-      if (availableStock < requiredQty) {
-        insufficientStock.push({
-          inventory_item_id: bomItem.inventory_item_id || '',
-          quantity_consumed: requiredQty,
-          item_name: bomItem.inventory_items?.name || 'Unknown',
-          available_stock: availableStock
-        });
+    const bomItems = Array.isArray(bom.bom_items) ? bom.bom_items : [];
+    
+    for (const bomItem of bomItems) {
+      if (bomItem && typeof bomItem === 'object') {
+        const requiredQty = (bomItem.quantity_required || 0) * productionOrder.quantity_to_produce;
+        const inventoryItem = bomItem.inventory_items;
+        const availableStock = (inventoryItem && typeof inventoryItem === 'object') ? inventoryItem.current_stock || 0 : 0;
+        
+        if (availableStock < requiredQty) {
+          insufficientStock.push({
+            inventory_item_id: bomItem.inventory_item_id || '',
+            quantity_consumed: requiredQty,
+            item_name: (inventoryItem && typeof inventoryItem === 'object') ? inventoryItem.name || 'Unknown' : 'Unknown',
+            available_stock: availableStock
+          });
+        }
       }
     }
 
@@ -130,39 +135,43 @@ export const completeProductionOrderEnhanced = async (
     }
 
     // Consume materials
-    for (const bomItem of bom.bom_items || []) {
-      const requiredQty = bomItem.quantity_required * productionOrder.quantity_to_produce;
-      
-      // Update inventory
-      const { error: updateError } = await supabase
-        .from('inventory_items')
-        .update({
-          current_stock: (bomItem.inventory_items?.current_stock || 0) - requiredQty,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bomItem.inventory_item_id);
+    for (const bomItem of bomItems) {
+      if (bomItem && typeof bomItem === 'object') {
+        const requiredQty = (bomItem.quantity_required || 0) * productionOrder.quantity_to_produce;
+        const inventoryItem = bomItem.inventory_items;
+        const currentStock = (inventoryItem && typeof inventoryItem === 'object') ? inventoryItem.current_stock || 0 : 0;
+        
+        // Update inventory
+        const { error: updateError } = await supabase
+          .from('inventory_items')
+          .update({
+            current_stock: currentStock - requiredQty,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', bomItem.inventory_item_id);
 
-      if (updateError) {
-        console.error('Error updating inventory:', updateError);
-        return {
-          success: false,
-          error: `Failed to update inventory: ${updateError.message}`
-        };
-      }
+        if (updateError) {
+          console.error('Error updating inventory:', updateError);
+          return {
+            success: false,
+            error: `Failed to update inventory: ${updateError.message}`
+          };
+        }
 
-      // Record material consumption
-      const { error: materialError } = await supabase
-        .from('production_materials')
-        .upsert({
-          production_order_id: orderId,
-          inventory_item_id: bomItem.inventory_item_id,
-          quantity_planned: requiredQty,
-          quantity_used: requiredQty,
-          unit_cost: bomItem.unit_cost || 0
-        });
+        // Record material consumption
+        const { error: materialError } = await supabase
+          .from('production_materials')
+          .upsert({
+            production_order_id: orderId,
+            inventory_item_id: bomItem.inventory_item_id,
+            quantity_planned: requiredQty,
+            quantity_used: requiredQty,
+            unit_cost: bomItem.unit_cost || 0
+          });
 
-      if (materialError) {
-        console.error('Error recording material usage:', materialError);
+        if (materialError) {
+          console.error('Error recording material usage:', materialError);
+        }
       }
     }
 
@@ -171,18 +180,29 @@ export const completeProductionOrderEnhanced = async (
     let productInventoryUpdated = false;
 
     // Update finished product inventory if linked
-    if (bom.products?.inventory_item_id) {
-      const { error: productUpdateError } = await supabase
+    if (bom.products && typeof bom.products === 'object' && bom.products.inventory_item_id) {
+      // First get current stock
+      const { data: currentInventory } = await supabase
         .from('inventory_items')
-        .update({
-          current_stock: supabase.sql`current_stock + ${producedQuantity}`,
-          last_restock_date: new Date().toISOString().split('T')[0],
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bom.products.inventory_item_id);
+        .select('current_stock')
+        .eq('id', bom.products.inventory_item_id)
+        .single();
 
-      if (!productUpdateError) {
-        productInventoryUpdated = true;
+      if (currentInventory) {
+        const newStock = (currentInventory.current_stock || 0) + producedQuantity;
+        
+        const { error: productUpdateError } = await supabase
+          .from('inventory_items')
+          .update({
+            current_stock: newStock,
+            last_restock_date: new Date().toISOString().split('T')[0],
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', bom.products.inventory_item_id);
+
+        if (!productUpdateError) {
+          productInventoryUpdated = true;
+        }
       }
     }
 
