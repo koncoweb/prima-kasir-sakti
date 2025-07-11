@@ -87,12 +87,12 @@ const ProductionFilters: React.FC<ProductionFiltersProps> = ({
             />
           </div>
 
-          <Select value={filters.status} onValueChange={(value) => updateFilter('status', value)}>
+          <Select value={filters.status || "all"} onValueChange={(value) => updateFilter('status', value === 'all' ? '' : value)}>
             <SelectTrigger>
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Statuses</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="planned">Planned</SelectItem>
               <SelectItem value="in_progress">In Progress</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
@@ -100,12 +100,12 @@ const ProductionFilters: React.FC<ProductionFiltersProps> = ({
             </SelectContent>
           </Select>
 
-          <Select value={filters.priority} onValueChange={(value) => updateFilter('priority', value)}>
+          <Select value={filters.priority || "all"} onValueChange={(value) => updateFilter('priority', value === 'all' ? '' : value)}>
             <SelectTrigger>
               <SelectValue placeholder="All Priorities" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Priorities</SelectItem>
+              <SelectItem value="all">All Priorities</SelectItem>
               <SelectItem value="urgent">Urgent</SelectItem>
               <SelectItem value="high">High</SelectItem>
               <SelectItem value="normal">Normal</SelectItem>
@@ -113,12 +113,12 @@ const ProductionFilters: React.FC<ProductionFiltersProps> = ({
             </SelectContent>
           </Select>
 
-          <Select value={filters.dateRange} onValueChange={(value) => updateFilter('dateRange', value)}>
+          <Select value={filters.dateRange || "all"} onValueChange={(value) => updateFilter('dateRange', value === 'all' ? '' : value)}>
             <SelectTrigger>
               <SelectValue placeholder="Date Range" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Dates</SelectItem>
+              <SelectItem value="all">All Dates</SelectItem>
               <SelectItem value="today">Today</SelectItem>
               <SelectItem value="tomorrow">Tomorrow</SelectItem>
               <SelectItem value="this_week">This Week</SelectItem>
@@ -127,12 +127,12 @@ const ProductionFilters: React.FC<ProductionFiltersProps> = ({
             </SelectContent>
           </Select>
 
-          <Select value={filters.bomId} onValueChange={(value) => updateFilter('bomId', value)}>
+          <Select value={filters.bomId || "all"} onValueChange={(value) => updateFilter('bomId', value === 'all' ? '' : value)}>
             <SelectTrigger>
               <SelectValue placeholder="All BOMs" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All BOMs</SelectItem>
+              <SelectItem value="all">All BOMs</SelectItem>
               {boms.map((bom) => (
                 <SelectItem key={bom.id} value={bom.id}>
                   {bom.name}
