@@ -47,10 +47,10 @@ export const useBillOfMaterials = () => {
         .from('bill_of_materials')
         .select(`
           *,
-          product:products(name, price),
-          bom_items(
+          product:products!fk_bill_of_materials_product(name, price),
+          bom_items!fk_bom_items_bom(
             *,
-            inventory_item:inventory_items(name, unit, unit_cost, item_type)
+            inventory_item:inventory_items!fk_bom_items_inventory_item(name, unit, unit_cost, item_type)
           )
         `)
         .eq('is_active', true)
@@ -77,10 +77,10 @@ export const useBillOfMaterials = () => {
         .insert([bomData])
         .select(`
           *,
-          product:products(name, price),
-          bom_items(
+          product:products!fk_bill_of_materials_product(name, price),
+          bom_items!fk_bom_items_bom(
             *,
-            inventory_item:inventory_items(name, unit, unit_cost, item_type)
+            inventory_item:inventory_items!fk_bom_items_inventory_item(name, unit, unit_cost, item_type)
           )
         `)
         .single();
@@ -113,7 +113,7 @@ export const useBillOfMaterials = () => {
         .insert([{ ...itemData, bom_id: bomId }])
         .select(`
           *,
-          inventory_item:inventory_items(name, unit, unit_cost, item_type)
+          inventory_item:inventory_items!fk_bom_items_inventory_item(name, unit, unit_cost, item_type)
         `)
         .single();
       
@@ -152,7 +152,7 @@ export const useBillOfMaterials = () => {
         .from('bom_items')
         .select(`
           *,
-          inventory_item:inventory_items(unit_cost)
+          inventory_item:inventory_items!fk_bom_items_inventory_item(unit_cost)
         `)
         .eq('bom_id', bomId);
       

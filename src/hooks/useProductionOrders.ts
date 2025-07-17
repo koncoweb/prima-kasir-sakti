@@ -40,7 +40,7 @@ export const useProductionOrders = () => {
         .from('production_orders')
         .select(`
           *,
-          bill_of_materials (
+          bill_of_materials!fk_production_orders_bom (
             name,
             description
           )
@@ -69,7 +69,7 @@ export const useProductionOrders = () => {
         .insert([{ ...orderData, order_number }])
         .select(`
           *,
-          bill_of_materials (
+          bill_of_materials!fk_production_orders_bom (
             name,
             description
           )
@@ -105,7 +105,7 @@ export const useProductionOrders = () => {
         .eq('id', id)
         .select(`
           *,
-          bill_of_materials (
+          bill_of_materials!fk_production_orders_bom (
             name,
             description
           )

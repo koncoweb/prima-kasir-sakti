@@ -21,7 +21,7 @@ export const consumeProductionMaterials = async (
       .from('bom_items')
       .select(`
         *,
-        inventory_item:inventory_items(id, name, current_stock, unit)
+        inventory_item:inventory_items!fk_bom_items_inventory_item(id, name, current_stock, unit)
       `)
       .eq('bom_id', bomId);
 

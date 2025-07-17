@@ -29,7 +29,7 @@ export const useInventory = () => {
         .from('inventory')
         .select(`
           *,
-          product:products(name, price)
+          product:products!fk_inventory_product(name, price)
         `)
         .order('created_at', { ascending: false });
       
@@ -58,7 +58,7 @@ export const useInventory = () => {
         .eq('id', id)
         .select(`
           *,
-          product:products(name, price)
+          product:products!fk_inventory_product(name, price)
         `)
         .single();
       

@@ -26,8 +26,8 @@ export const fetchIntegratedProducts = async (): Promise<IntegratedProduct[]> =>
     .from('products')
     .select(`
       *,
-      category:categories(name),
-      inventory_item:inventory_items!inventory_item_id(
+      category:categories!fk_products_category(name),
+      inventory_item:inventory_items!fk_products_inventory_item(
         current_stock,
         min_stock,
         max_stock,
@@ -108,8 +108,8 @@ export const createIntegratedProduct = async (productData: {
       }])
       .select(`
         *,
-        category:categories(name),
-        inventory_item:inventory_items!inventory_item_id(
+        category:categories!fk_products_category(name),
+        inventory_item:inventory_items!fk_products_inventory_item(
           current_stock,
           min_stock,
           max_stock,

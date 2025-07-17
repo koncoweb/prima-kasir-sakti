@@ -47,7 +47,7 @@ const Dashboard = () => {
         .from('transactions')
         .select(`
           *,
-          transaction_items (
+          transaction_items!fk_transaction_items_transaction (
             quantity,
             total_price,
             product_name

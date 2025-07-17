@@ -123,7 +123,7 @@ export const useSuppliers = () => {
         .from('supplier_items')
         .select(`
           *,
-          supplier:suppliers(*)
+          supplier:suppliers!fk_supplier_items_supplier(*)
         `)
         .eq('inventory_item_id', inventoryItemId);
       

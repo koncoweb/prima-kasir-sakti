@@ -70,15 +70,15 @@ export const completeProductionOrderEnhanced = async (
       .from('production_orders')
       .select(`
         *,
-        bill_of_materials:bom_id (
+        bill_of_materials!fk_production_orders_bom (
           *,
-          products:product_id (
+          products!fk_bill_of_materials_product (
             id,
             inventory_item_id
           ),
-          bom_items (
+          bom_items!fk_bom_items_bom (
             *,
-            inventory_items:inventory_item_id (
+            inventory_items!fk_bom_items_inventory_item (
               id,
               name,
               current_stock
@@ -259,14 +259,14 @@ export const getProductionCostAnalysis = async (): Promise<ProductionCostAnalysi
         status,
         created_at,
         completed_at,
-        bill_of_materials:bom_id (
+        bill_of_materials!fk_production_orders_bom (
           name,
           total_cost,
-          products:product_id (
+          products!fk_bill_of_materials_product (
             name
           )
         ),
-        production_materials (
+        production_materials!fk_production_materials_production_order (
           quantity_used,
           unit_cost
         )
@@ -365,7 +365,7 @@ export const getBOMProfitability = async (): Promise<BOMProfitability[]> => {
         id,
         name,
         total_cost,
-        products:product_id (
+        products!fk_bill_of_materials_product (
           name,
           price
         )

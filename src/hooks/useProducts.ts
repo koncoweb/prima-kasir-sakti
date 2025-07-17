@@ -52,7 +52,7 @@ export const useProducts = () => {
         .from('products')
         .select(`
           *,
-          category:categories(name)
+          category:categories!fk_products_category(name)
         `)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
@@ -78,7 +78,7 @@ export const useProducts = () => {
         .insert([productData])
         .select(`
           *,
-          category:categories(name)
+          category:categories!fk_products_category(name)
         `)
         .single();
       
@@ -111,7 +111,7 @@ export const useProducts = () => {
         .eq('id', id)
         .select(`
           *,
-          category:categories(name)
+          category:categories!fk_products_category(name)
         `)
         .single();
       
